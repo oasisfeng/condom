@@ -84,7 +84,7 @@ public class CondomContext extends PseudoContextWrapper {
 		 *
 		 * @return whether this outbound request should be allowed.
 		 */
-		boolean judge(OutboundType type, String target_pkg);
+		boolean shouldAllow(OutboundType type, String target_pkg);
 	}
 
 	/** Set to dry-run mode to inspect the outbound wake-up only, no outbound requests will be actually blocked. */
@@ -243,7 +243,7 @@ public class CondomContext extends PseudoContextWrapper {
 		final String target_pkg = component != null ? component.getPackageName() : intent.getPackage();
 		if (target_pkg == null) return false;
 		if (target_pkg.equals(getPackageName())) return false;		// Targeting this package itself actually, not an outbound service.
-		if (! mOutboundJudge.judge(type, target_pkg)) {
+		if (! mOutboundJudge.shouldAllow(type, target_pkg)) {
 			if (DEBUG) Log.w(TAG, "Blocked outbound " + type + ": " + intent);
 			return ! mDryRun;
 		} else return false;
