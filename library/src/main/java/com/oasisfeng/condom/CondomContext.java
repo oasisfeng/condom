@@ -38,6 +38,7 @@ import android.os.UserHandle;
 import android.support.annotation.Keep;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
+import android.support.annotation.VisibleForTesting;
 import android.util.Log;
 
 import javax.annotation.CheckReturnValue;
@@ -268,8 +269,10 @@ public class CondomContext extends PseudoContextWrapper {
 	 * or not running) apps, regardless of whether that would be done by default.  By
 	 * default they will receive broadcasts if the broadcast has specified an
 	 * explicit component or package name.
+	 *
+	 * @since API level 24 (Android N)
 	 */
-	@RequiresApi(N) private static final int FLAG_RECEIVER_EXCLUDE_BACKGROUND = 0x00800000;
+	@VisibleForTesting static final int FLAG_RECEIVER_EXCLUDE_BACKGROUND = 0x00800000;
 
 	private final String TAG;
 
