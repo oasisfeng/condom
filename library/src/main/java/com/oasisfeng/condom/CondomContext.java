@@ -56,7 +56,7 @@ import static android.os.Build.VERSION_CODES.N;
  * Created by Oasis on 2017/3/25.
  */
 @ParametersAreNonnullByDefault @Keep
-public class CondomContext extends ContextWrapper {
+public class CondomContext extends PseudoContextWrapper {
 
 	/**
 	 * This is the very first (probably only) API you need to wrap the naked {@link Context} under protection of <code>CondomContext</code>
