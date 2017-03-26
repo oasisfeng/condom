@@ -53,17 +53,22 @@ import static android.os.Build.VERSION_CODES.N;
 @ParametersAreNonnullByDefault @Keep
 public class CondomContext extends ContextWrapper {
 
-	/** This is the very first (probably only) API you need to wrap the naked {@link Context} in the protection of <code>CondomContext</code> */
-	public static @CheckReturnValue CondomContext wrap(final Context base) {
+	/**
+	 * This is the very first (probably only) API you need to wrap the naked {@link Context} under protection of <code>CondomContext</code>
+	 *
+	 * @param base	the original context used before <code>CondomContext</code> is introduced.
+	 * @param tag	the optional tag to distinguish between multiple instances of <code>CondomContext</code> used parallel.
+	 */
+	public static @CheckReturnValue CondomContext wrap(final Context base, final @Nullable String tag) {
 		if (base instanceof CondomContext) return (CondomContext) base;
 		final Context app_context = base.getApplicationContext();
 		if (app_context instanceof Application) {	// The application context is indeed an Application, this should be preserved semantically.
 			final Application app = (Application) app_context;
 			final CondomApplication condom_app = new CondomApplication(app);
-			final CondomContext condom_context = new CondomContext(base, condom_app);
-			condom_app.attachBaseContext(base == app_context ? condom_context : new CondomContext(app, app));
+			final CondomContext condom_context = new CondomContext(base, condom_app, tag);
+			condom_app.attachBaseContext(base == app_context ? condom_context : new CondomContext(app, app, tag));
 			return condom_context;
-		} else return new CondomContext(base, base == app_context ? null : new CondomContext(app_context, app_context));
+		} else return new CondomContext(base, base == app_context ? null : new CondomContext(app_context, app_context, tag), tag);
 	}
 
 	enum OutboundType { START_SERVICE, BIND_SERVICE, BROADCAST }
@@ -170,10 +175,11 @@ public class CondomContext extends ContextWrapper {
 		} else return false;
 	}
 
-	private CondomContext(final Context base, final @Nullable Context app_context) {
+	private CondomContext(final Context base, final @Nullable Context app_context, final @Nullable String tag) {
 		super(base);
 		mApplicationContext = app_context != null ? app_context : this;
 		mDebug = (base.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+		TAG = tag == null ? "Condom" : "Condom." + tag;
 	}
 
 	private boolean mDryRun;
@@ -191,7 +197,7 @@ public class CondomContext extends ContextWrapper {
 	 */
 	@RequiresApi(N) private static final int FLAG_RECEIVER_EXCLUDE_BACKGROUND = 0x00800000;
 
-	private static final String TAG = "Project.Condom";
+	private final String TAG;
 
 	private static class CondomApplication extends Application {
 
