@@ -83,7 +83,13 @@ public class CondomContext extends ContextWrapper {
 	}
 
 	/** Set to dry-run mode to inspect the outbound wake-up only, no outbound requests will be actually blocked. */
-	public CondomContext setDryRun(final boolean dry_run) { mDryRun = dry_run; return this; }
+	public CondomContext setDryRun(final boolean dry_run) {
+		if (dry_run == mDryRun) return this;
+		mDryRun = dry_run;
+		if (dry_run) Log.w(TAG, "Start dry-run mode, no outbound requests will be blocked actually, despite stated in log.");
+		else Log.w(TAG, "Stop dry-run mode.");
+		return this;
+	}
 
 	/** Set a custom judge for the explicit target package of outbound service and broadcast requests. */
 	public CondomContext setOutboundJudge(final OutboundJudge judge) { mOutboundJudge = judge; return this; }
@@ -108,8 +114,8 @@ public class CondomContext extends ContextWrapper {
 	@Override public boolean bindService(final Intent service, final ServiceConnection conn, final int flags) {
 		final int original_flags = adjustIntentFlags(service);
 		if (shouldBlockExplicitRequest(OutboundType.BIND_SERVICE, service)) {
+			if (mDebug) Log.w(TAG, "Blocked outbound explicit service binding: " + service);
 			if (! mDryRun) return false;
-			Log.w(TAG, "[DRY-RUN] Suppose to block outbound explicit service binding: " + service);
 		}
 		final boolean result = super.bindService(service, conn, flags);
 		service.setFlags(original_flags);
@@ -119,8 +125,8 @@ public class CondomContext extends ContextWrapper {
 	@Override public ComponentName startService(final Intent service) {
 		final int original_flags = adjustIntentFlags(service);
 		if (shouldBlockExplicitRequest(OutboundType.START_SERVICE, service)) {
+			if (mDebug) Log.w(TAG, "Blocked outbound explicit service starting: " + service);
 			if (! mDryRun) return null;
-			Log.w(TAG, "[DRY-RUN] Suppose to block outbound explicit service starting: " + service);
 		}
 		final ComponentName result = super.startService(service);
 		service.setFlags(original_flags);
@@ -130,8 +136,8 @@ public class CondomContext extends ContextWrapper {
 	@Override public void sendBroadcast(final Intent intent) {
 		final int original_flags = adjustIntentFlags(intent);
 		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) {
+			if (mDebug) Log.w(TAG, "Blocked outbound explicit broadcast: " + intent);
 			if (! mDryRun) return;
-			Log.w(TAG, "[DRY-RUN] Suppose to block outbound explicit broadcast: " + intent);
 		}
 		super.sendBroadcast(intent);
 		intent.setFlags(original_flags);
