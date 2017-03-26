@@ -95,19 +95,19 @@ public class CondomContext extends ContextWrapper {
 	public CondomContext setOutboundJudge(final OutboundJudge judge) { mOutboundJudge = judge; return this; }
 
 	/**
-	 * Allow outbound service request to wake-up force-stopped packages. (default: Disallow, not recommended to change)
+	 * Prevent outbound service request from waking-up force-stopped packages. (default: true, not recommended to change)
 	 *
 	 * <p>If a package is force-stopped by user, it usually mean that app did not work as expected (most probably due to repeated crashes).
 	 * Waking-up those packages usually leads to bad user experience, even the worse, the infamous annoying "APP STOPPED" dialog.
 	 */
-	public CondomContext setAllowWakingUpStoppedPackages(final boolean allow_or_not) { mAllowWakingUpStoppedPackages = allow_or_not; return this; }
+	public CondomContext preventWakingUpStoppedPackages(final boolean prevent_or_not) { mExcludeStoppedPackages = prevent_or_not; return this; }
 
 	/**
-	 * Allow implicit broadcast to be delivered to manifest receivers in background (cached or not running) apps. (default: Disallow)
+	 * Prevent broadcast to be delivered to manifest receivers in background (cached or not running) apps. (default: true)
 	 *
-	 * <p>This restriction is always enforced by Android O, and it works similarly by only targeting registered receivers on previous Android versions.
+	 * <p>This restriction is supported natively since Android O, and it works similarly by only targeting registered receivers on previous Android versions.
 	 */
-	public CondomContext setAllowBroadcastToBackgroundPackages(final boolean allow_or_not) { mAllowBroadcastToBackgroundPackages = allow_or_not; return this; }
+	public CondomContext preventBroadcastToBackgroundPackages(final boolean prevent_or_not) { mExcludeBackgroundPackages = prevent_or_not; return this; }
 
 	/* ****** Hooked Context APIs ****** */
 
@@ -162,9 +162,9 @@ public class CondomContext extends ContextWrapper {
 	private int adjustIntentFlags(final Intent intent) {
 		final int original_flags = intent.getFlags();
 		if (mDryRun) return original_flags;
-		if (! mAllowBroadcastToBackgroundPackages)
+		if (mExcludeBackgroundPackages)
 			intent.addFlags(SDK_INT >= N ? FLAG_RECEIVER_EXCLUDE_BACKGROUND : Intent.FLAG_RECEIVER_REGISTERED_ONLY);
-		if (SDK_INT >= HONEYCOMB_MR1 && ! mAllowWakingUpStoppedPackages)
+		if (SDK_INT >= HONEYCOMB_MR1 && mExcludeStoppedPackages)
 			intent.setFlags((intent.getFlags() & ~ Intent.FLAG_INCLUDE_STOPPED_PACKAGES) | Intent.FLAG_EXCLUDE_STOPPED_PACKAGES);
 		return original_flags;
 	}
@@ -190,8 +190,8 @@ public class CondomContext extends ContextWrapper {
 
 	private boolean mDryRun;
 	private OutboundJudge mOutboundJudge;
-	private boolean mAllowWakingUpStoppedPackages;
-	private boolean mAllowBroadcastToBackgroundPackages;
+	private boolean mExcludeStoppedPackages = true;
+	private boolean mExcludeBackgroundPackages = true;
 	private final boolean DEBUG;
 	private final Context mApplicationContext;
 
