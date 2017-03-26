@@ -22,6 +22,7 @@
 package com.oasisfeng.condom;
 
 import android.app.Application;
+import android.content.BroadcastReceiver;
 import android.content.ComponentCallbacks;
 import android.content.ComponentName;
 import android.content.ContentResolver;
@@ -31,6 +32,9 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.UserHandle;
 import android.support.annotation.Keep;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
@@ -42,6 +46,7 @@ import javax.annotation.ParametersAreNonnullByDefault;
 import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.HONEYCOMB_MR1;
 import static android.os.Build.VERSION_CODES.ICE_CREAM_SANDWICH;
+import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR1;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR2;
 import static android.os.Build.VERSION_CODES.N;
 
@@ -113,10 +118,7 @@ public class CondomContext extends ContextWrapper {
 
 	@Override public boolean bindService(final Intent service, final ServiceConnection conn, final int flags) {
 		final int original_flags = adjustIntentFlags(service);
-		if (shouldBlockExplicitRequest(OutboundType.BIND_SERVICE, service)) {
-			if (DEBUG) Log.w(TAG, "Blocked outbound explicit service binding: " + service);
-			if (! mDryRun) return false;
-		}
+		if (shouldBlockExplicitRequest(OutboundType.BIND_SERVICE, service)) return false;
 		final boolean result = super.bindService(service, conn, flags);
 		service.setFlags(original_flags);
 		return result;
@@ -124,10 +126,7 @@ public class CondomContext extends ContextWrapper {
 
 	@Override public ComponentName startService(final Intent service) {
 		final int original_flags = adjustIntentFlags(service);
-		if (shouldBlockExplicitRequest(OutboundType.START_SERVICE, service)) {
-			if (DEBUG) Log.w(TAG, "Blocked outbound explicit service starting: " + service);
-			if (! mDryRun) return null;
-		}
+		if (shouldBlockExplicitRequest(OutboundType.START_SERVICE, service)) return null;
 		final ComponentName result = super.startService(service);
 		service.setFlags(original_flags);
 		return result;
@@ -135,15 +134,82 @@ public class CondomContext extends ContextWrapper {
 
 	@Override public void sendBroadcast(final Intent intent) {
 		final int original_flags = adjustIntentFlags(intent);
-		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) {
-			if (DEBUG) Log.w(TAG, "Blocked outbound explicit broadcast: " + intent);
-			if (! mDryRun) return;
-		}
+		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
 		super.sendBroadcast(intent);
 		intent.setFlags(original_flags);
 	}
 
-	@Override public Context getApplicationContext() { return mApplicationContext; }
+	@Override public void sendBroadcast(final Intent intent, final String receiverPermission) {
+		final int original_flags = adjustIntentFlags(intent);
+		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
+		super.sendBroadcast(intent, receiverPermission);
+		intent.setFlags(original_flags);
+	}
+
+	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user) {
+		final int original_flags = adjustIntentFlags(intent);
+		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
+		super.sendBroadcastAsUser(intent, user);
+		intent.setFlags(original_flags);
+	}
+
+	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission) {
+		final int original_flags = adjustIntentFlags(intent);
+		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
+		super.sendBroadcastAsUser(intent, user, receiverPermission);
+		intent.setFlags(original_flags);
+	}
+
+	@Override public void sendOrderedBroadcast(final Intent intent, final String receiverPermission) {
+		final int original_flags = adjustIntentFlags(intent);
+		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
+		super.sendOrderedBroadcast(intent, receiverPermission);
+		intent.setFlags(original_flags);
+	}
+
+	@Override public void sendOrderedBroadcast(final Intent intent, final String receiverPermission, final BroadcastReceiver resultReceiver,
+											   final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
+		final int original_flags = adjustIntentFlags(intent);
+		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
+		super.sendOrderedBroadcast(intent, receiverPermission, resultReceiver, scheduler, initialCode, initialData, initialExtras);
+		intent.setFlags(original_flags);
+	}
+
+	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendOrderedBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission, final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
+		final int original_flags = adjustIntentFlags(intent);
+		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
+		super.sendOrderedBroadcastAsUser(intent, user, receiverPermission, resultReceiver, scheduler, initialCode, initialData, initialExtras);
+		intent.setFlags(original_flags);
+	}
+
+	@Override public void sendStickyBroadcast(final Intent intent) {
+		final int original_flags = adjustIntentFlags(intent);
+		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
+		super.sendStickyBroadcast(intent);
+		intent.setFlags(original_flags);
+	}
+
+	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendStickyBroadcastAsUser(final Intent intent, final UserHandle user) {
+		final int original_flags = adjustIntentFlags(intent);
+		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
+		super.sendStickyBroadcastAsUser(intent, user);
+		intent.setFlags(original_flags);
+	}
+
+	@Override public void sendStickyOrderedBroadcast(final Intent intent, final BroadcastReceiver resultReceiver, final Handler scheduler,
+													 final int initialCode, final String initialData, final Bundle initialExtras) {
+		final int original_flags = adjustIntentFlags(intent);
+		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
+		super.sendStickyOrderedBroadcast(intent, resultReceiver, scheduler, initialCode, initialData, initialExtras);
+		intent.setFlags(original_flags);
+	}
+
+	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendStickyOrderedBroadcastAsUser(final Intent intent, final UserHandle user, final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
+		final int original_flags = adjustIntentFlags(intent);
+		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
+		super.sendStickyOrderedBroadcastAsUser(intent, user, resultReceiver, scheduler, initialCode, initialData, initialExtras);
+		intent.setFlags(original_flags);
+	}
 
 	// TODO: Protect package queries (for service and receiver)
 	@Override public PackageManager getPackageManager() {
@@ -156,6 +222,8 @@ public class CondomContext extends ContextWrapper {
 		if (DEBUG) Log.d(TAG, "getContentResolver() is invoked", new Throwable());
 		return super.getContentResolver();
 	}
+
+	@Override public Context getApplicationContext() { return mApplicationContext; }
 
 	/* ********************************* */
 
@@ -177,7 +245,7 @@ public class CondomContext extends ContextWrapper {
 		if (target_pkg.equals(getPackageName())) return false;		// Targeting this package itself actually, not an outbound service.
 		if (! mOutboundJudge.judge(type, target_pkg)) {
 			if (DEBUG) Log.w(TAG, "Blocked outbound " + type + ": " + intent);
-			return true;
+			return ! mDryRun;
 		} else return false;
 	}
 
