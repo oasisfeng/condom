@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.oasisfeng.condom">
+    <application>
+        <meta-data android:name="com.oasisfeng.condom.version" android:value="1.0.0.201703"/>
+    </application>
+</manifest>
