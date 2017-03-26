@@ -32,6 +32,7 @@ import android.content.ServiceConnection;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.support.annotation.Keep;
+import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
 
@@ -56,9 +57,13 @@ public class CondomContext extends ContextWrapper {
 	public static @CheckReturnValue CondomContext wrap(final Context base) {
 		if (base instanceof CondomContext) return (CondomContext) base;
 		final Context app_context = base.getApplicationContext();
-		if (app_context instanceof Application)		// The application context is indeed an Application, this should be preserved semantically.
-			return new CondomContext(base, new CondomApplication((Application) app_context));
-		else return new CondomContext(base, new CondomContext(app_context, app_context));
+		if (app_context instanceof Application) {	// The application context is indeed an Application, this should be preserved semantically.
+			final Application app = (Application) app_context;
+			final CondomApplication condom_app = new CondomApplication(app);
+			final CondomContext condom_context = new CondomContext(base, condom_app);
+			condom_app.attachBaseContext(base == app_context ? condom_context : new CondomContext(app, app));
+			return condom_context;
+		} else return new CondomContext(base, base == app_context ? null : new CondomContext(app_context, app_context));
 	}
 
 	enum OutboundType { START_SERVICE, BIND_SERVICE, BROADCAST }
@@ -165,9 +170,9 @@ public class CondomContext extends ContextWrapper {
 		} else return false;
 	}
 
-	private CondomContext(final Context base, final Context app_context) {
+	private CondomContext(final Context base, final @Nullable Context app_context) {
 		super(base);
-		mApplicationContext = app_context;
+		mApplicationContext = app_context != null ? app_context : this;
 		mDebug = (base.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
 	}
 
@@ -209,10 +214,8 @@ public class CondomContext extends ContextWrapper {
 			if (SDK_INT >= JELLY_BEAN_MR2) mApplication.unregisterOnProvideAssistDataListener(callback);
 		}
 
-		CondomApplication(final Application app) {
-			mApplication = app;
-			attachBaseContext(new CondomContext(app, app));
-		}
+		CondomApplication(final Application app) { mApplication = app; }
+		@Override public void attachBaseContext(final Context base) { super.attachBaseContext(base); }
 
 		private final Application mApplication;
 	}
