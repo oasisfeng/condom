@@ -114,7 +114,7 @@ public class CondomContext extends ContextWrapper {
 	@Override public boolean bindService(final Intent service, final ServiceConnection conn, final int flags) {
 		final int original_flags = adjustIntentFlags(service);
 		if (shouldBlockExplicitRequest(OutboundType.BIND_SERVICE, service)) {
-			if (mDebug) Log.w(TAG, "Blocked outbound explicit service binding: " + service);
+			if (DEBUG) Log.w(TAG, "Blocked outbound explicit service binding: " + service);
 			if (! mDryRun) return false;
 		}
 		final boolean result = super.bindService(service, conn, flags);
@@ -125,7 +125,7 @@ public class CondomContext extends ContextWrapper {
 	@Override public ComponentName startService(final Intent service) {
 		final int original_flags = adjustIntentFlags(service);
 		if (shouldBlockExplicitRequest(OutboundType.START_SERVICE, service)) {
-			if (mDebug) Log.w(TAG, "Blocked outbound explicit service starting: " + service);
+			if (DEBUG) Log.w(TAG, "Blocked outbound explicit service starting: " + service);
 			if (! mDryRun) return null;
 		}
 		final ComponentName result = super.startService(service);
@@ -136,7 +136,7 @@ public class CondomContext extends ContextWrapper {
 	@Override public void sendBroadcast(final Intent intent) {
 		final int original_flags = adjustIntentFlags(intent);
 		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) {
-			if (mDebug) Log.w(TAG, "Blocked outbound explicit broadcast: " + intent);
+			if (DEBUG) Log.w(TAG, "Blocked outbound explicit broadcast: " + intent);
 			if (! mDryRun) return;
 		}
 		super.sendBroadcast(intent);
@@ -147,13 +147,13 @@ public class CondomContext extends ContextWrapper {
 
 	// TODO: Protect package queries (for service and receiver)
 	@Override public PackageManager getPackageManager() {
-		if (mDebug) Log.d(TAG, "getPackageManager() is invoked", new Throwable());
+		if (DEBUG) Log.d(TAG, "getPackageManager() is invoked", new Throwable());
 		return super.getPackageManager();
 	}
 
 	// TODO: Protect outbound provider requests
 	@Override public ContentResolver getContentResolver() {
-		if (mDebug) Log.d(TAG, "getContentResolver() is invoked", new Throwable());
+		if (DEBUG) Log.d(TAG, "getContentResolver() is invoked", new Throwable());
 		return super.getContentResolver();
 	}
 
@@ -176,7 +176,7 @@ public class CondomContext extends ContextWrapper {
 		if (target_pkg == null) return false;
 		if (target_pkg.equals(getPackageName())) return false;		// Targeting this package itself actually, not an outbound service.
 		if (! mOutboundJudge.judge(type, target_pkg)) {
-			if (mDebug) Log.w(TAG, "Blocked outbound " + type + ": " + intent);
+			if (DEBUG) Log.w(TAG, "Blocked outbound " + type + ": " + intent);
 			return true;
 		} else return false;
 	}
@@ -184,7 +184,7 @@ public class CondomContext extends ContextWrapper {
 	private CondomContext(final Context base, final @Nullable Context app_context, final @Nullable String tag) {
 		super(base);
 		mApplicationContext = app_context != null ? app_context : this;
-		mDebug = (base.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+		DEBUG = (base.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
 		TAG = tag == null ? "Condom" : "Condom." + tag;
 	}
 
@@ -192,7 +192,7 @@ public class CondomContext extends ContextWrapper {
 	private OutboundJudge mOutboundJudge;
 	private boolean mAllowWakingUpStoppedPackages;
 	private boolean mAllowBroadcastToBackgroundPackages;
-	private final boolean mDebug;
+	private final boolean DEBUG;
 	private final Context mApplicationContext;
 
 	/**
