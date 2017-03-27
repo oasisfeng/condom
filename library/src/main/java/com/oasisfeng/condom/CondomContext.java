@@ -85,11 +85,12 @@ public class CondomContext extends ContextWrapper {
 
 	enum OutboundType { START_SERVICE, BIND_SERVICE, BROADCAST, QUERY_SERVICES, QUERY_RECEIVERS }
 
-	interface OutboundJudge {
+	public interface OutboundJudge {
 		/**
 		 * Judge the outbound request by its explicit target package.
 		 *
-		 * @return whether this outbound request should be allowed.
+		 * @return whether this outbound request should be allowed, or whether the query result entry should be included in the returned collection.
+		 *         Disallowed service request will simply fail and broadcast will be dropped.
 		 */
 		boolean shouldAllow(OutboundType type, String target_pkg);
 	}
