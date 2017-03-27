@@ -6,6 +6,10 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.content.pm.ServiceInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -15,6 +19,8 @@ import android.support.test.InstrumentationRegistry;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -25,6 +31,7 @@ import static android.os.Build.VERSION_CODES.HONEYCOMB_MR1;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR1;
 import static android.os.Build.VERSION_CODES.N;
 import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.assertTrue;
 import static junit.framework.Assert.fail;
 
@@ -127,23 +134,68 @@ public class CondomContextBlockingTest {
 				if (! delegation_expected.get()) fail("Not blocked as expected");
 				else mDelegated.set(true);
 			}
+
+			@Override public PackageManager getPackageManager() {
+				return new PackageManagerWrapper(InstrumentationRegistry.getTargetContext().getPackageManager()) {
+					@Override public ResolveInfo resolveService(final Intent intent, final int flags) {
+						return buildResolveInfo(DISALLOWED_PACKAGE, true);
+					}
+
+					@Override public List<ResolveInfo> queryIntentServices(final Intent intent, final int flags) {
+						final List<ResolveInfo> resolves = new ArrayList<>();
+						resolves.add(buildResolveInfo(ALLOWED_PACKAGE, true));
+						resolves.add(buildResolveInfo(DISALLOWED_PACKAGE, true));
+						return resolves;
+					}
+
+					@Override public List<ResolveInfo> queryBroadcastReceivers(final Intent intent, final int flags) {
+						final List<ResolveInfo> resolves = new ArrayList<>();
+						resolves.add(buildResolveInfo(ALLOWED_PACKAGE, false));
+						resolves.add(buildResolveInfo(DISALLOWED_PACKAGE, false));
+						return resolves;
+					}
+
+					private ResolveInfo buildResolveInfo(final String pkg, final boolean service_or_receiver) {
+						final ResolveInfo resolve = new ResolveInfo() { @Override public String toString() { return "ResolveInfo{test}"; } };
+						if (service_or_receiver) {
+							resolve.serviceInfo = new ServiceInfo();
+							resolve.serviceInfo.packageName = pkg;
+						} else {
+							resolve.activityInfo = new ActivityInfo();
+							resolve.activityInfo.packageName = pkg;
+						}
+						return resolve;
+					}
+				};
+			}
 		};
 		final CondomContext condom = CondomContext.wrap(context, TAG).setOutboundJudge(new CondomContext.OutboundJudge() {
 			@Override public boolean shouldAllow(final CondomContext.OutboundType type, final String target_pkg) {
-				return ! "a.b.c".equals(target_pkg);
+				return ! DISALLOWED_PACKAGE.equals(target_pkg);
 			}
 		});
-		condom.sendBroadcast(new Intent("com.example.TEST").setPackage("a.b.c"));
-		condom.sendBroadcast(new Intent("com.example.TEST").setComponent(new ComponentName("a.b.c", "A")));
+		final PackageManager pm = condom.getPackageManager();
+		condom.sendBroadcast(intent().setPackage(DISALLOWED_PACKAGE));
+		condom.sendBroadcast(intent().setComponent(new ComponentName(DISALLOWED_PACKAGE, "A")));
+		assertNull(pm.resolveService(intent().setPackage(DISALLOWED_PACKAGE), 0));
+		assertEquals(1, pm.queryIntentServices(intent(), 0).size());
+		assertEquals(1, pm.queryBroadcastReceivers(intent(), 0).size());
+
 		delegation_expected.set(true);
+		condom.sendBroadcast(new Intent("com.example.TEST").setPackage(ALLOWED_PACKAGE));
+		assertTrue(mDelegated.get());
+		condom.sendBroadcast(new Intent("com.example.TEST").setComponent(new ComponentName(ALLOWED_PACKAGE, "A")));
+		assertTrue(mDelegated.get());
 		condom.sendBroadcast(new Intent("com.example.TEST"));
 		assertTrue(mDelegated.get());
 
 		// Dry-run test
 		condom.setDryRun(true);
 		delegation_expected.set(true);
-		condom.sendBroadcast(new Intent("com.example.TEST").setPackage("a.b.c"));
-		condom.sendBroadcast(new Intent("com.example.TEST").setComponent(new ComponentName("a.b.c", "A")));
+		condom.sendBroadcast(new Intent("com.example.TEST").setPackage(DISALLOWED_PACKAGE));
+		condom.sendBroadcast(new Intent("com.example.TEST").setComponent(new ComponentName(DISALLOWED_PACKAGE, "A")));
+		condom.sendBroadcast(new Intent("com.example.TEST").setPackage(ALLOWED_PACKAGE));
+		condom.sendBroadcast(new Intent("com.example.TEST").setComponent(new ComponentName(ALLOWED_PACKAGE, "A")));
 		condom.sendBroadcast(new Intent("com.example.TEST"));
 	}
 
@@ -162,5 +214,7 @@ public class CondomContextBlockingTest {
 		@Override public void onServiceDisconnected(final ComponentName name) {}
 	};
 
+	private static final String DISALLOWED_PACKAGE = "a.b.c";
+	private static final String ALLOWED_PACKAGE = "x.y.z";
 	private static final String TAG = "Test";
 }
