@@ -227,16 +227,18 @@ public class CondomContext extends ContextWrapper {
 		@Override public Void proceed(final Intent intent) { run(intent); return null; }
 	}
 
-	private void proceed(final OutboundType type, final Intent intent, final WrappedProcedure procedure) {
+	@SuppressWarnings("ResultOfMethodCallIgnored") private void proceed(final OutboundType type, final Intent intent, final WrappedProcedure procedure) {
 		proceed(type, intent, null, procedure);
 	}
 
 	private @CheckReturnValue <T> T proceed(final OutboundType type, final Intent intent, final @Nullable T negative_value, final WrappedValueProcedure<T> procedure) {
 		final int original_flags = adjustIntentFlags(intent);
 		if (shouldBlockExplicitRequest(type, intent)) return negative_value;
-		final T result = procedure.proceed(intent);
-		intent.setFlags(original_flags);
-		return result;
+		try {
+			return procedure.proceed(intent);
+		} finally {
+			intent.setFlags(original_flags);
+		}
 	}
 
 	private int adjustIntentFlags(final Intent intent) {
