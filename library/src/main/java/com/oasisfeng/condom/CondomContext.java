@@ -32,6 +32,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.UserHandle;
@@ -40,6 +41,10 @@ import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.support.annotation.VisibleForTesting;
 import android.util.Log;
+
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.ParametersAreNonnullByDefault;
@@ -78,7 +83,7 @@ public class CondomContext extends ContextWrapper {
 		} else return new CondomContext(base, base == app_context ? null : new CondomContext(app_context, app_context, tag, debuggable), tag, debuggable);
 	}
 
-	enum OutboundType { START_SERVICE, BIND_SERVICE, BROADCAST }
+	enum OutboundType { START_SERVICE, BIND_SERVICE, BROADCAST, QUERY_SERVICES, QUERY_RECEIVERS }
 
 	interface OutboundJudge {
 		/**
@@ -89,6 +94,9 @@ public class CondomContext extends ContextWrapper {
 		boolean shouldAllow(OutboundType type, String target_pkg);
 	}
 
+	/** Set a custom judge for the explicit target package of outbound service and broadcast requests. */
+	public CondomContext setOutboundJudge(final OutboundJudge judge) { mOutboundJudge = judge; return this; }
+
 	/** Set to dry-run mode to inspect the outbound wake-up only, no outbound requests will be actually blocked. */
 	public CondomContext setDryRun(final boolean dry_run) {
 		if (dry_run == mDryRun) return this;
@@ -97,9 +105,6 @@ public class CondomContext extends ContextWrapper {
 		else Log.w(TAG, "Stop dry-run mode.");
 		return this;
 	}
-
-	/** Set a custom judge for the explicit target package of outbound service and broadcast requests. */
-	public CondomContext setOutboundJudge(final OutboundJudge judge) { mOutboundJudge = judge; return this; }
 
 	/**
 	 * Prevent outbound service request from waking-up force-stopped packages. (default: true, not recommended to change)
@@ -198,18 +203,13 @@ public class CondomContext extends ContextWrapper {
 		}});
 	}
 
-	// TODO: Protect package queries (for service, receiver and providers)
-	@Override public PackageManager getPackageManager() {
-		if (DEBUG) Log.d(TAG, "getPackageManager() is invoked", new Throwable());
-		return super.getPackageManager();
-	}
-
 	// TODO: Protect outbound provider requests
 	@Override public ContentResolver getContentResolver() {
 		if (DEBUG) Log.d(TAG, "getContentResolver() is invoked", new Throwable());
 		return super.getContentResolver();
 	}
 
+	@Override public PackageManager getPackageManager() { return mPackageManager; }
 	@Override public Context getApplicationContext() { return mApplicationContext; }
 	@Override public Context getBaseContext() {
 		if (DEBUG) Log.d(TAG, "getBaseContext() is invoked", new Throwable());
@@ -241,6 +241,23 @@ public class CondomContext extends ContextWrapper {
 		}
 	}
 
+	private @CheckReturnValue List<ResolveInfo> proceedQuery(final OutboundType type, final Intent intent, final WrappedValueProcedure<List<ResolveInfo>> procedure) {
+		return proceed(type, intent, Collections.<ResolveInfo>emptyList(), new WrappedValueProcedure<List<ResolveInfo>>() { @Override public List<ResolveInfo> proceed(final Intent intent) {
+			final List<ResolveInfo> candidates = procedure.proceed(intent);
+			final Iterator<ResolveInfo> iterator = candidates.iterator();
+			while (iterator.hasNext()) {
+				final ResolveInfo candidate = iterator.next();
+				final String pkg = type == OutboundType.QUERY_SERVICES ? candidate.serviceInfo.packageName
+						: (type == OutboundType.QUERY_RECEIVERS ? candidate.activityInfo.packageName : null);
+				if (shouldBlockRequestTarget(type, pkg)) {
+					iterator.remove();		// TODO: Not safe to assume the list returned from PackageManager is modifiable.
+					Log.w(TAG, "Filtered " + pkg + " from " + type + ": " + intent);
+				}
+			}
+			return candidates;
+		}});
+	}
+
 	private int adjustIntentFlags(final Intent intent) {
 		final int original_flags = intent.getFlags();
 		if (mDryRun) return original_flags;
@@ -255,17 +272,24 @@ public class CondomContext extends ContextWrapper {
 		if (mOutboundJudge == null) return false;
 		final ComponentName component = intent.getComponent();
 		final String target_pkg = component != null ? component.getPackageName() : intent.getPackage();
-		if (target_pkg == null) return false;
-		if (target_pkg.equals(getPackageName())) return false;		// Targeting this package itself actually, not an outbound service.
-		if (! mOutboundJudge.shouldAllow(type, target_pkg)) {
+		if (shouldBlockRequestTarget(type, target_pkg)) {
 			if (DEBUG) Log.w(TAG, "Blocked outbound " + type + ": " + intent);
-			return ! mDryRun;
+			return true;
 		} else return false;
+	}
+
+	private boolean shouldBlockRequestTarget(final OutboundType type, final @Nullable String target_pkg) {
+		if (target_pkg == null) return false;
+		if (mOutboundJudge == null) return false;
+		if (target_pkg.equals(getPackageName())) return false;		// Targeting this package itself actually, not an outbound service.
+		if (mOutboundJudge.shouldAllow(type, target_pkg)) return false;
+		return ! mDryRun;
 	}
 
 	private CondomContext(final Context base, final @Nullable Context app_context, final @Nullable String tag, final boolean debuggable) {
 		super(base);
 		mApplicationContext = app_context != null ? app_context : this;
+		mPackageManager = new CondomPackageManager(base.getPackageManager());
 		TAG = tag == null ? "Condom" : "Condom." + tag;
 		DEBUG = debuggable;
 	}
@@ -274,9 +298,11 @@ public class CondomContext extends ContextWrapper {
 	private OutboundJudge mOutboundJudge;
 	private boolean mExcludeStoppedPackages = true;
 	private boolean mExcludeBackgroundPackages = true;
-	private final boolean DEBUG;
 	private final Context mApplicationContext;
 	private final Context mBaseContext = new PseudoContextImpl(this);
+	private final PackageManager mPackageManager;
+	private final String TAG;
+	private final boolean DEBUG;
 
 	/**
 	 * If set, the broadcast will never go to manifest receivers in background (cached
@@ -288,7 +314,30 @@ public class CondomContext extends ContextWrapper {
 	 */
 	@VisibleForTesting static final int FLAG_RECEIVER_EXCLUDE_BACKGROUND = 0x00800000;
 
-	private final String TAG;
+	/* ****** Internal branch functionality ****** */
+
+	private class CondomPackageManager extends PackageManagerWrapper {
+
+		@Override public List<ResolveInfo> queryBroadcastReceivers(final Intent intent, final int flags) {
+			return proceedQuery(OutboundType.QUERY_RECEIVERS, intent, new WrappedValueProcedure<List<ResolveInfo>>() { @Override public List<ResolveInfo> proceed(final Intent intent) {
+				return CondomPackageManager.super.queryBroadcastReceivers(intent, flags);
+			}});
+		}
+
+		@Override public List<ResolveInfo> queryIntentServices(final Intent intent, final int flags) {
+			return proceedQuery(OutboundType.QUERY_SERVICES, intent, new WrappedValueProcedure<List<ResolveInfo>>() { @Override public List<ResolveInfo> proceed(final Intent intent) {
+				return CondomPackageManager.super.queryIntentServices(intent, flags);
+			}});
+		}
+
+		@Override public ResolveInfo resolveService(final Intent intent, final int flags) {
+			return proceed(OutboundType.QUERY_SERVICES, intent, null, new WrappedValueProcedure<ResolveInfo>() { @Override public ResolveInfo proceed(final Intent intent) {
+				return CondomPackageManager.super.resolveService(intent, flags);
+			}});
+		}
+
+		CondomPackageManager(final PackageManager base) { super(base); }
+	}
 
 	private static class CondomApplication extends Application {
 
