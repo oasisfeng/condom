@@ -118,99 +118,84 @@ public class CondomContext extends ContextWrapper {
 
 	/* ****** Hooked Context APIs ****** */
 
-	@Override public boolean bindService(final Intent service, final ServiceConnection conn, final int flags) {
-		final int original_flags = adjustIntentFlags(service);
-		if (shouldBlockExplicitRequest(OutboundType.BIND_SERVICE, service)) return false;
-		final boolean result = super.bindService(service, conn, flags);
-		service.setFlags(original_flags);
-		return result;
+	@Override public boolean bindService(final Intent intent, final ServiceConnection conn, final int flags) {
+		return proceed(OutboundType.BIND_SERVICE, intent, Boolean.FALSE, new WrappedValueProcedure<Boolean>() { @Override public Boolean proceed(final Intent intent) {
+			return CondomContext.super.bindService(intent, conn, flags);
+		}});
 	}
 
-	@Override public ComponentName startService(final Intent service) {
-		final int original_flags = adjustIntentFlags(service);
-		if (shouldBlockExplicitRequest(OutboundType.START_SERVICE, service)) return null;
-		final ComponentName result = super.startService(service);
-		service.setFlags(original_flags);
-		return result;
+	@Override public ComponentName startService(final Intent intent) {
+		return proceed(OutboundType.START_SERVICE, intent, null, new WrappedValueProcedure<ComponentName>() { @Override public ComponentName proceed(final Intent intent) {
+			return CondomContext.super.startService(intent);
+		}});
 	}
 
 	@Override public void sendBroadcast(final Intent intent) {
-		final int original_flags = adjustIntentFlags(intent);
-		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
-		super.sendBroadcast(intent);
-		intent.setFlags(original_flags);
+		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+			CondomContext.super.sendBroadcast(intent);
+		}});
 	}
 
 	@Override public void sendBroadcast(final Intent intent, final String receiverPermission) {
-		final int original_flags = adjustIntentFlags(intent);
-		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
-		super.sendBroadcast(intent, receiverPermission);
-		intent.setFlags(original_flags);
+		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+			CondomContext.super.sendBroadcast(intent, receiverPermission);
+		}});
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user) {
-		final int original_flags = adjustIntentFlags(intent);
-		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
-		super.sendBroadcastAsUser(intent, user);
-		intent.setFlags(original_flags);
+		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+			CondomContext.super.sendBroadcastAsUser(intent, user);
+		}});
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission) {
-		final int original_flags = adjustIntentFlags(intent);
-		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
-		super.sendBroadcastAsUser(intent, user, receiverPermission);
-		intent.setFlags(original_flags);
+		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+			CondomContext.super.sendBroadcastAsUser(intent, user, receiverPermission);
+		}});
 	}
 
 	@Override public void sendOrderedBroadcast(final Intent intent, final String receiverPermission) {
-		final int original_flags = adjustIntentFlags(intent);
-		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
-		super.sendOrderedBroadcast(intent, receiverPermission);
-		intent.setFlags(original_flags);
+		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+			CondomContext.super.sendOrderedBroadcast(intent, receiverPermission);
+		}});
 	}
 
 	@Override public void sendOrderedBroadcast(final Intent intent, final String receiverPermission, final BroadcastReceiver resultReceiver,
 											   final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
-		final int original_flags = adjustIntentFlags(intent);
-		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
-		super.sendOrderedBroadcast(intent, receiverPermission, resultReceiver, scheduler, initialCode, initialData, initialExtras);
-		intent.setFlags(original_flags);
+		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+			CondomContext.super.sendOrderedBroadcast(intent, receiverPermission, resultReceiver, scheduler, initialCode, initialData, initialExtras);
+		}});
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendOrderedBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission, final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
-		final int original_flags = adjustIntentFlags(intent);
-		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
-		super.sendOrderedBroadcastAsUser(intent, user, receiverPermission, resultReceiver, scheduler, initialCode, initialData, initialExtras);
-		intent.setFlags(original_flags);
+		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+			CondomContext.super.sendOrderedBroadcastAsUser(intent, user, receiverPermission, resultReceiver, scheduler, initialCode, initialData, initialExtras);
+		}});
 	}
 
 	@Override public void sendStickyBroadcast(final Intent intent) {
-		final int original_flags = adjustIntentFlags(intent);
-		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
-		super.sendStickyBroadcast(intent);
-		intent.setFlags(original_flags);
+		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+			CondomContext.super.sendStickyBroadcast(intent);
+		}});
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendStickyBroadcastAsUser(final Intent intent, final UserHandle user) {
-		final int original_flags = adjustIntentFlags(intent);
-		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
-		super.sendStickyBroadcastAsUser(intent, user);
-		intent.setFlags(original_flags);
+		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+			CondomContext.super.sendStickyBroadcastAsUser(intent, user);
+		}});
 	}
 
 	@Override public void sendStickyOrderedBroadcast(final Intent intent, final BroadcastReceiver resultReceiver, final Handler scheduler,
 													 final int initialCode, final String initialData, final Bundle initialExtras) {
-		final int original_flags = adjustIntentFlags(intent);
-		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
-		super.sendStickyOrderedBroadcast(intent, resultReceiver, scheduler, initialCode, initialData, initialExtras);
-		intent.setFlags(original_flags);
+		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+			CondomContext.super.sendStickyOrderedBroadcast(intent, resultReceiver, scheduler, initialCode, initialData, initialExtras);
+		}});
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendStickyOrderedBroadcastAsUser(final Intent intent, final UserHandle user, final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
-		final int original_flags = adjustIntentFlags(intent);
-		if (shouldBlockExplicitRequest(OutboundType.BROADCAST, intent)) return;
-		super.sendStickyOrderedBroadcastAsUser(intent, user, resultReceiver, scheduler, initialCode, initialData, initialExtras);
-		intent.setFlags(original_flags);
+		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+			CondomContext.super.sendStickyOrderedBroadcastAsUser(intent, user, resultReceiver, scheduler, initialCode, initialData, initialExtras);
+		}});
 	}
 
 	// TODO: Protect package queries (for service, receiver and providers)
@@ -232,6 +217,27 @@ public class CondomContext extends ContextWrapper {
 	}
 
 	/* ********************************* */
+
+	private interface WrappedValueProcedure<R> {
+		R proceed(Intent intent);
+	}
+
+	private static abstract class WrappedProcedure implements WrappedValueProcedure<Void> {
+		abstract void run(Intent intent);
+		@Override public Void proceed(final Intent intent) { run(intent); return null; }
+	}
+
+	private void proceed(final OutboundType type, final Intent intent, final WrappedProcedure procedure) {
+		proceed(type, intent, null, procedure);
+	}
+
+	private @CheckReturnValue <T> T proceed(final OutboundType type, final Intent intent, final @Nullable T negative_value, final WrappedValueProcedure<T> procedure) {
+		final int original_flags = adjustIntentFlags(intent);
+		if (shouldBlockExplicitRequest(type, intent)) return negative_value;
+		final T result = procedure.proceed(intent);
+		intent.setFlags(original_flags);
+		return result;
+	}
 
 	private int adjustIntentFlags(final Intent intent) {
 		final int original_flags = intent.getFlags();
