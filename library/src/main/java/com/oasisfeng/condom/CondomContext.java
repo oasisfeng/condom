@@ -57,7 +57,7 @@ import static android.os.Build.VERSION_CODES.N;
  * Created by Oasis on 2017/3/25.
  */
 @ParametersAreNonnullByDefault @Keep
-public class CondomContext extends PseudoContextWrapper {
+public class CondomContext extends ContextWrapper {
 
 	/**
 	 * This is the very first (probably only) API you need to wrap the naked {@link Context} under protection of <code>CondomContext</code>
@@ -68,13 +68,14 @@ public class CondomContext extends PseudoContextWrapper {
 	public static @CheckReturnValue CondomContext wrap(final Context base, final @Nullable String tag) {
 		if (base instanceof CondomContext) return (CondomContext) base;
 		final Context app_context = base.getApplicationContext();
+		final boolean debuggable = (base.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
 		if (app_context instanceof Application) {	// The application context is indeed an Application, this should be preserved semantically.
 			final Application app = (Application) app_context;
-			final CondomApplication condom_app = new CondomApplication(app);
-			final CondomContext condom_context = new CondomContext(base, condom_app, tag);
-			condom_app.attachBaseContext(base == app_context ? condom_context : new CondomContext(app, app, tag));
+			final CondomApplication condom_app = new CondomApplication(app, tag, debuggable);
+			final CondomContext condom_context = new CondomContext(base, condom_app, tag, debuggable);
+			condom_app.attachBaseContext(base == app_context ? condom_context : new CondomContext(app, app, tag, debuggable));
 			return condom_context;
-		} else return new CondomContext(base, base == app_context ? null : new CondomContext(app_context, app_context, tag), tag);
+		} else return new CondomContext(base, base == app_context ? null : new CondomContext(app_context, app_context, tag, debuggable), tag, debuggable);
 	}
 
 	enum OutboundType { START_SERVICE, BIND_SERVICE, BROADCAST }
@@ -212,7 +213,7 @@ public class CondomContext extends PseudoContextWrapper {
 		intent.setFlags(original_flags);
 	}
 
-	// TODO: Protect package queries (for service and receiver)
+	// TODO: Protect package queries (for service, receiver and providers)
 	@Override public PackageManager getPackageManager() {
 		if (DEBUG) Log.d(TAG, "getPackageManager() is invoked", new Throwable());
 		return super.getPackageManager();
@@ -225,6 +226,10 @@ public class CondomContext extends PseudoContextWrapper {
 	}
 
 	@Override public Context getApplicationContext() { return mApplicationContext; }
+	@Override public Context getBaseContext() {
+		if (DEBUG) Log.d(TAG, "getBaseContext() is invoked", new Throwable());
+		return mBaseContext;
+	}
 
 	/* ********************************* */
 
@@ -250,11 +255,11 @@ public class CondomContext extends PseudoContextWrapper {
 		} else return false;
 	}
 
-	private CondomContext(final Context base, final @Nullable Context app_context, final @Nullable String tag) {
+	private CondomContext(final Context base, final @Nullable Context app_context, final @Nullable String tag, final boolean debuggable) {
 		super(base);
 		mApplicationContext = app_context != null ? app_context : this;
-		DEBUG = (base.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
 		TAG = tag == null ? "Condom" : "Condom." + tag;
+		DEBUG = debuggable;
 	}
 
 	private boolean mDryRun;
@@ -263,6 +268,7 @@ public class CondomContext extends PseudoContextWrapper {
 	private boolean mExcludeBackgroundPackages = true;
 	private final boolean DEBUG;
 	private final Context mApplicationContext;
+	private final Context mBaseContext = new PseudoContextImpl(this);
 
 	/**
 	 * If set, the broadcast will never go to manifest receivers in background (cached
@@ -297,9 +303,27 @@ public class CondomContext extends PseudoContextWrapper {
 			if (SDK_INT >= JELLY_BEAN_MR2) mApplication.unregisterOnProvideAssistDataListener(callback);
 		}
 
-		CondomApplication(final Application app) { mApplication = app; }
+		// The actual context returned may not be semantically consistent. We'll keep an eye for it in the wild.
+		@Override public Context getBaseContext() {
+			if (DEBUG) Log.w(TAG, "Application.getBaseContext() is invoked", new Throwable());
+			return super.getBaseContext();
+		}
+
 		@Override public void attachBaseContext(final Context base) { super.attachBaseContext(base); }
 
+		CondomApplication(final Application app, final @Nullable String tag, final boolean debuggable) {
+			mApplication = app;
+			TAG = tag == null ? "CondomApp" : "CondomApp." + tag;
+			DEBUG = debuggable;
+		}
+
 		private final Application mApplication;
+		private final boolean DEBUG;
+		private final String TAG;
+	}
+
+	// This should act as what ContextImpl stands for in the naked Context structure.
+	private static class PseudoContextImpl extends PseudoContextWrapper {
+		public PseudoContextImpl(final CondomContext condom) { super(condom); }
 	}
 }
