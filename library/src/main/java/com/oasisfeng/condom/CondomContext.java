@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Oasis Feng. All rights reserved.
+ * Copyright (C) 2017 Oasis Feng. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -233,8 +233,14 @@ public class CondomContext extends ContextWrapper {
 	}
 
 	private @CheckReturnValue <T> T proceed(final OutboundType type, final Intent intent, final @Nullable T negative_value, final WrappedValueProcedure<T> procedure) {
+		final ComponentName component = intent.getComponent();
+		final String target_pkg = component != null ? component.getPackageName() : intent.getPackage();
+		if (getPackageName().equals(target_pkg)) return procedure.proceed(intent);		// Self-targeting request is allowed unconditionally
 		final int original_flags = adjustIntentFlags(intent);
-		if (shouldBlockExplicitRequest(type, intent)) return negative_value;
+		if (shouldBlockRequestTarget(type, target_pkg)) {
+			if (DEBUG) Log.w(TAG, "Blocked outbound " + type + ": " + intent);
+			return negative_value;
+		}
 		try {
 			return procedure.proceed(intent);
 		} finally {
@@ -269,22 +275,8 @@ public class CondomContext extends ContextWrapper {
 		return original_flags;
 	}
 
-	private boolean shouldBlockExplicitRequest(final OutboundType type, final Intent intent) {
-		if (mOutboundJudge == null) return false;
-		final ComponentName component = intent.getComponent();
-		final String target_pkg = component != null ? component.getPackageName() : intent.getPackage();
-		if (shouldBlockRequestTarget(type, target_pkg)) {
-			if (DEBUG) Log.w(TAG, "Blocked outbound " + type + ": " + intent);
-			return true;
-		} else return false;
-	}
-
 	private boolean shouldBlockRequestTarget(final OutboundType type, final @Nullable String target_pkg) {
-		if (target_pkg == null) return false;
-		if (mOutboundJudge == null) return false;
-		if (target_pkg.equals(getPackageName())) return false;		// Targeting this package itself actually, not an outbound service.
-		if (mOutboundJudge.shouldAllow(type, target_pkg)) return false;
-		return ! mDryRun;
+		return target_pkg != null && mOutboundJudge != null && ! mOutboundJudge.shouldAllow(type, target_pkg) && ! mDryRun;
 	}
 
 	private CondomContext(final Context base, final @Nullable Context app_context, final @Nullable String tag, final boolean debuggable) {

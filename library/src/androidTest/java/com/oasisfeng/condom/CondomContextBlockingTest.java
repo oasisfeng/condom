@@ -64,6 +64,7 @@ public class CondomContextBlockingTest {
 		final CondomContext condom = CondomContext.wrap(context, TAG);
 
 		// Dry-run test
+		expected_flags.set(0);		// Flags should be intact
 		condom.setDryRun(true);
 		condom.startService(intent());
 		assertBaseCalled();
@@ -72,6 +73,23 @@ public class CondomContextBlockingTest {
 		condom.sendBroadcast(intent());		// Test just one of the broadcast-related APIs, since they all share the same logic.
 		assertBaseCalled();
 		condom.setDryRun(false);
+
+		// Self-targeting test
+		expected_flags.set(0);		// Flags should be intact
+		final String self_pkg = context.getPackageName();
+		condom.startService(intent().setPackage(self_pkg));
+		assertBaseCalled();
+		condom.bindService(intent().setPackage(self_pkg), SERVICE_CONNECTION, 0);
+		assertBaseCalled();
+		condom.sendBroadcast(intent().setPackage(self_pkg));
+		assertBaseCalled();
+		final ComponentName local_comp = new ComponentName(self_pkg, "A");
+		condom.startService(intent().setComponent(local_comp));
+		assertBaseCalled();
+		condom.bindService(intent().setComponent(local_comp), SERVICE_CONNECTION, 0);
+		assertBaseCalled();
+		condom.sendBroadcast(intent().setComponent(local_comp));
+		assertBaseCalled();
 
 		// Allow broadcast to background packages and waking-up stopped packages.
 		condom.preventWakingUpStoppedPackages(false);
@@ -213,7 +231,6 @@ public class CondomContextBlockingTest {
 		@Override public void onServiceConnected(final ComponentName name, final IBinder service) {}
 		@Override public void onServiceDisconnected(final ComponentName name) {}
 	};
-
 	private static final String DISALLOWED_PACKAGE = "a.b.c";
 	private static final String ALLOWED_PACKAGE = "x.y.z";
 	private static final String TAG = "Test";
