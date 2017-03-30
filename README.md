@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/oasisfeng/condom.svg?branch=master)](https://travis-ci.org/oasisfeng/condom)
+
 # Project Condom
 
 Project Condom is a thin library to wrap the naked `Context` in your Android project before passing it to the 3rd-party SDK.
