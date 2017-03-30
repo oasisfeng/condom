@@ -17,6 +17,7 @@
 
 package com.oasisfeng.condom;
 
+import android.annotation.TargetApi;
 import android.app.Application;
 import android.content.BroadcastReceiver;
 import android.content.ComponentCallbacks;
@@ -34,7 +35,6 @@ import android.os.Handler;
 import android.os.UserHandle;
 import android.support.annotation.Keep;
 import android.support.annotation.Nullable;
-import android.support.annotation.RequiresApi;
 import android.support.annotation.VisibleForTesting;
 import android.util.Log;
 
@@ -144,13 +144,13 @@ public class CondomContext extends ContextWrapper {
 		}});
 	}
 
-	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user) {
+	@TargetApi(JELLY_BEAN_MR1) @Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user) {
 		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
 			CondomContext.super.sendBroadcastAsUser(intent, user);
 		}});
 	}
 
-	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission) {
+	@TargetApi(JELLY_BEAN_MR1) @Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission) {
 		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
 			CondomContext.super.sendBroadcastAsUser(intent, user, receiverPermission);
 		}});
@@ -169,7 +169,7 @@ public class CondomContext extends ContextWrapper {
 		}});
 	}
 
-	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendOrderedBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission, final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
+	@TargetApi(JELLY_BEAN_MR1) @Override public void sendOrderedBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission, final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
 		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
 			CondomContext.super.sendOrderedBroadcastAsUser(intent, user, receiverPermission, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 		}});
@@ -181,7 +181,7 @@ public class CondomContext extends ContextWrapper {
 		}});
 	}
 
-	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendStickyBroadcastAsUser(final Intent intent, final UserHandle user) {
+	@TargetApi(JELLY_BEAN_MR1) @Override public void sendStickyBroadcastAsUser(final Intent intent, final UserHandle user) {
 		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
 			CondomContext.super.sendStickyBroadcastAsUser(intent, user);
 		}});
@@ -194,7 +194,7 @@ public class CondomContext extends ContextWrapper {
 		}});
 	}
 
-	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendStickyOrderedBroadcastAsUser(final Intent intent, final UserHandle user, final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
+	@TargetApi(JELLY_BEAN_MR1) @Override public void sendStickyOrderedBroadcastAsUser(final Intent intent, final UserHandle user, final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
 		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
 			CondomContext.super.sendStickyOrderedBroadcastAsUser(intent, user, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 		}});
