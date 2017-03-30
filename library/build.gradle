@@ -13,6 +13,12 @@ android {
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
     }
+
+    lintOptions {
+        textOutput 'stdout'
+        textReport true
+    }
+
     buildTypes {
         release {
             minifyEnabled false
@@ -23,7 +29,7 @@ android {
 
 dependencies {
     compile 'com.google.code.findbugs:jsr305:2.0.1'
-    compile 'com.android.support:support-annotations:25.3.0'
+    compile 'com.android.support:support-annotations:25.3.1'
 
     androidTestCompile 'com.android.support.test:runner:0.5'
 
