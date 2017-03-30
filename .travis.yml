@@ -5,14 +5,14 @@ android:
     - platform-tools
     - tools # intentional, see travis-ci/docs-travis-ci-com#779
     - build-tools-25.0.2
+    - android-22 # For emulator to work
     - android-25
     - extra-android-m2repository
     # Specify at least one system image, if you need to run emulator(s) during your tests
-    - sys-img-armeabi-v7a-android-24
-
+    - sys-img-armeabi-v7a-android-22
 env:
   matrix:
-    - ANDROID_SDKS=android-25,sysimg-25  ANDROID_TARGET=android-25  ANDROID_ABI=armeabi-v7a
+    - ANDROID_SDKS=android-22,sysimg-22  ANDROID_TARGET=android-22  ANDROID_ABI=armeabi-v7a
 before_install:
   - echo no | android create avd --force -n test -t $ANDROID_TARGET --abi $ANDROID_ABI
   - emulator -avd test -no-skin -no-audio -no-window &
