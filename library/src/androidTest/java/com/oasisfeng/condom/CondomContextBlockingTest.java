@@ -39,26 +39,26 @@ import static junit.framework.Assert.fail;
 public class CondomContextBlockingTest {
 
 	@Test public void testDelegationAndExclusionFlagsIncludingDryRun() {
-		final AtomicInteger expected_flags = new AtomicInteger(), unexpected_flags = new AtomicInteger();
+		final AtomicInteger expected_flags = new AtomicInteger(), expected_receiver_flags = new AtomicInteger(), unexpected_flags = new AtomicInteger();
 		final Context context = new ContextWrapper(InstrumentationRegistry.getTargetContext()) {
-			@Override public ComponentName startService(final Intent intent) { check(intent); return null; }
-			@Override public boolean bindService(final Intent intent, final ServiceConnection c, final int f) { check(intent); return false; }
-			@Override public void sendBroadcast(final Intent intent) { check(intent); }
-			@Override public void sendBroadcast(final Intent intent, final String p) { check(intent); }
-			@Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user) { check(intent); }
-			@Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission) { check(intent); }
-			@Override public void sendStickyBroadcast(final Intent intent) { check(intent); }
-			@Override public void sendStickyBroadcastAsUser(final Intent intent, final UserHandle u) { check(intent); }
-			@Override public void sendOrderedBroadcast(final Intent intent, final String p) { check(intent); }
-			@Override public void sendOrderedBroadcast(final Intent intent, final String p, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent); }
-			@Override public void sendOrderedBroadcastAsUser(final Intent intent, final UserHandle u, final String p, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent); }
-			@Override public void sendStickyOrderedBroadcast(final Intent intent, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent); }
-			@Override public void sendStickyOrderedBroadcastAsUser(final Intent intent, final UserHandle u, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent); }
-			private void check(final Intent intent) {
+			@Override public ComponentName startService(final Intent intent) { check(intent, false); return null; }
+			@Override public boolean bindService(final Intent intent, final ServiceConnection c, final int f) { check(intent, false); return false; }
+			@Override public void sendBroadcast(final Intent intent) { check(intent, true); }
+			@Override public void sendBroadcast(final Intent intent, final String p) { check(intent, true); }
+			@Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user) { check(intent, true); }
+			@Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission) { check(intent, true); }
+			@Override public void sendStickyBroadcast(final Intent intent) { check(intent, true); }
+			@Override public void sendStickyBroadcastAsUser(final Intent intent, final UserHandle u) { check(intent, true); }
+			@Override public void sendOrderedBroadcast(final Intent intent, final String p) { check(intent, true); }
+			@Override public void sendOrderedBroadcast(final Intent intent, final String p, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent, true); }
+			@Override public void sendOrderedBroadcastAsUser(final Intent intent, final UserHandle u, final String p, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent, true); }
+			@Override public void sendStickyOrderedBroadcast(final Intent intent, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent, true); }
+			@Override public void sendStickyOrderedBroadcastAsUser(final Intent intent, final UserHandle u, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent, true); }
+			private void check(final Intent intent, boolean broadcast) {
 				mDelegated.set(true);
-				final int all_flags = expected_flags.get() | unexpected_flags.get();
+				final int all_flags = expected_flags.get() | expected_receiver_flags.get() | unexpected_flags.get();
 				assertEquals(INTENT_FLAGS, intent.getFlags() & ~ all_flags);		// Assert original flags intact
-				assertEquals(expected_flags.get(), (intent.getFlags() & all_flags));
+				assertEquals(expected_flags.get() | (broadcast ? expected_receiver_flags.get() : 0), (intent.getFlags() & all_flags));
 			}
 		};
 		final CondomContext condom = CondomContext.wrap(context, TAG);
@@ -98,7 +98,7 @@ public class CondomContextBlockingTest {
 		assertBaseCalled();
 		// Prevent broadcast to background packages
 		condom.preventBroadcastToBackgroundPackages(true);
-		expected_flags.set(SDK_INT >= N ? CondomContext.FLAG_RECEIVER_EXCLUDE_BACKGROUND : Intent.FLAG_RECEIVER_REGISTERED_ONLY);
+		expected_receiver_flags.set(SDK_INT >= N ? CondomContext.FLAG_RECEIVER_EXCLUDE_BACKGROUND : Intent.FLAG_RECEIVER_REGISTERED_ONLY);
 		condom.sendBroadcast(intent());
 		condom.preventWakingUpStoppedPackages(true);
 		// Prevent waking-up stopped packages.

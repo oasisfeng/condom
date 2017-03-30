@@ -232,7 +232,7 @@ public class CondomContext extends ContextWrapper {
 		final ComponentName component = intent.getComponent();
 		final String target_pkg = component != null ? component.getPackageName() : intent.getPackage();
 		if (getPackageName().equals(target_pkg)) return procedure.proceed(intent);		// Self-targeting request is allowed unconditionally
-		final int original_flags = adjustIntentFlags(intent);
+		final int original_flags = adjustIntentFlags(type, intent);
 		if (shouldBlockRequestTarget(type, target_pkg)) {
 			if (DEBUG) Log.w(TAG, "Blocked outbound " + type + ": " + intent);
 			return negative_value;
@@ -261,10 +261,10 @@ public class CondomContext extends ContextWrapper {
 		}});
 	}
 
-	private int adjustIntentFlags(final Intent intent) {
+	private int adjustIntentFlags(final OutboundType type, final Intent intent) {
 		final int original_flags = intent.getFlags();
 		if (mDryRun) return original_flags;
-		if (mExcludeBackgroundPackages)
+		if (mExcludeBackgroundPackages && (type == OutboundType.BROADCAST || type == OutboundType.QUERY_RECEIVERS))
 			intent.addFlags(SDK_INT >= N ? FLAG_RECEIVER_EXCLUDE_BACKGROUND : Intent.FLAG_RECEIVER_REGISTERED_ONLY);
 		if (SDK_INT >= HONEYCOMB_MR1 && mExcludeStoppedPackages)
 			intent.setFlags((intent.getFlags() & ~ Intent.FLAG_INCLUDE_STOPPED_PACKAGES) | Intent.FLAG_EXCLUDE_STOPPED_PACKAGES);
