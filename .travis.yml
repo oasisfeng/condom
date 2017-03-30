@@ -1,0 +1,21 @@
+language: android
+android:
+  components:
+    - platform-tools
+    - tools
+    - build-tools-25.0.2
+    - android-25
+    - extra-android-m2repository
+
+    # Specify at least one system image, if you need to run emulator(s) during your tests
+    - sys-img-armeabi-v7a-android-24
+
+env:
+  matrix:
+    - ANDROID_SDKS=android-24,sysimg-24  ANDROID_TARGET=android-24  ANDROID_ABI=armeabi-v7a
+before_install:
+  - echo no | android create avd --force -n test -t $ANDROID_TARGET --abi $ANDROID_ABI
+  - emulator -avd test -no-skin -no-audio -no-window &
+before_script:
+  - ./ci/wait_for_emulator
+  - adb shell input keyevent 82 &
