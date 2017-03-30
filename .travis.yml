@@ -8,7 +8,6 @@ android:
     - android-22 # For emulator to work
     - android-25
     - extra-android-m2repository
-    # Specify at least one system image, if you need to run emulator(s) during your tests
     - sys-img-armeabi-v7a-android-22
 env:
   matrix:
@@ -17,5 +16,6 @@ before_install:
   - echo no | android create avd --force -n test -t $ANDROID_TARGET --abi $ANDROID_ABI
   - emulator -avd test -no-skin -no-audio -no-window &
 before_script:
+  - chmod +x gradlew
   - android-wait-for-emulator
   - adb shell input keyevent 82 &
