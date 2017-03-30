@@ -1,12 +1,13 @@
 language: android
 android:
   components:
-    - platform-tools
     - tools
+    - platform-tools
+    - tools # intentional, see travis-ci/docs-travis-ci-com#779
     - build-tools-25.0.2
+    - android-22 # avd creation fails without this
     - android-25
     - extra-android-m2repository
-
     # Specify at least one system image, if you need to run emulator(s) during your tests
     - sys-img-armeabi-v7a-android-24
 
