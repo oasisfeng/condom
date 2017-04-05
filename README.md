@@ -37,7 +37,7 @@ That's it! Enjoy the protection.
 这是由于在这些SDK初始化阶段启动的其它应用中往往也存在三方SDK的类似行为，造成了进程启动的『链式反应』，在短时间内消耗大量的CPU、文件IO及
 内存资源，使得当前应用所能得到的资源被大量挤占（甚至耗尽）。
 
-**注意：此项目通常并不适用于核心功能强依赖特定外部应用或组件的SDK（如Facebook SDK、Google Play services SDK）。** 如果希望在使用此类SDK时避免后台唤醒依赖的应用，仅在特定条件下（如用户主动作出相关操作时）调用SDK所依赖的应用，则可以使用本项目，并通过`setOutboundJudge()`自主控制何时放行。
+**注意：此项目通常并不适用于核心功能强依赖特定外部应用或组件的SDK（如Facebook SDK、Google Play services SDK）。** 如果希望在使用此类SDK时避免后台唤醒依赖的应用，仅在特定条件下（如用户主动作出相关操作时）调用SDK所依赖的应用，则可以使用本项目，并通过`CondomContext.setOutboundJudge()`自主控制何时放行。
 
 ## 快速开始
 
