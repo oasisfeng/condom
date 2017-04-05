@@ -63,4 +63,4 @@ XxxClient.init(CondomContext.wrap(context, "XxxSDK"), ...);
 
 * 开发者可主动设置一个```OutboundJudge```回调，方便根据需求定制拦截策略。
 * 避免通过此Context发出的广播启动其它应用的进程。在Android N以上，通过为非应用内广播的```Intent```添加```FLAG_RECEIVER_EXCLUDE_BACKGROUND```标志达成；在低版本Android系统中，通过添加```FLAG_RECEIVER_REGISTERED_ONLY```达到类似的效果。
-* 避免通过此Context发出的广播或请求的服务启动其它应用的进程。通过为非应用内的请求```Intent```添加```FLAG_EXCLUDE_STOPPED_PACKAGES```标识达成。
+* 避免通过此Context发出的广播或请求的服务启动已被用户强行停止的应用。通过为发往应用之外的广播或服务请求```Intent```添加```FLAG_EXCLUDE_STOPPED_PACKAGES```标识达成。
