@@ -17,6 +17,7 @@
 
 package com.oasisfeng.condom;
 
+import android.app.ActivityManager;
 import android.app.Application;
 import android.content.BroadcastReceiver;
 import android.content.ComponentCallbacks;
@@ -31,6 +32,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Process;
 import android.os.UserHandle;
 import android.support.annotation.Keep;
 import android.support.annotation.Nullable;
@@ -45,11 +47,13 @@ import java.util.List;
 import javax.annotation.CheckReturnValue;
 import javax.annotation.ParametersAreNonnullByDefault;
 
+import static android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_BACKGROUND;
 import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.HONEYCOMB_MR1;
 import static android.os.Build.VERSION_CODES.ICE_CREAM_SANDWICH;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR1;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR2;
+import static android.os.Build.VERSION_CODES.LOLLIPOP_MR1;
 import static android.os.Build.VERSION_CODES.N;
 
 /**
@@ -116,7 +120,15 @@ public class CondomContext extends ContextWrapper {
 	 *
 	 * <p>This restriction is supported natively since Android O, and it works similarly by only targeting registered receivers on previous Android versions.
 	 */
-	public CondomContext preventBroadcastToBackgroundPackages(final boolean prevent_or_not) { mExcludeBackgroundPackages = prevent_or_not; return this; }
+	public CondomContext preventBroadcastToBackgroundPackages(final boolean prevent_or_not) { mExcludeBackgroundReceivers = prevent_or_not; return this; }
+
+	/**
+	 * Prevent service in background (cached or not running) apps to be discovered via {@link PackageManager#queryIntentServices(Intent, int)}
+	 * or {@link PackageManager#resolveService(Intent, int)}. (default: true)
+	 *
+	 * <p>This restriction is supported natively since Android O, and it works similarly by only targeting registered receivers on previous Android versions.
+	 */
+	public CondomContext preventServiceInBackgroundPackages(final boolean prevent_or_not) { mExcludeBackgroundServices = prevent_or_not; return this; }
 
 	/* ****** Hooked Context APIs ****** */
 
@@ -231,10 +243,13 @@ public class CondomContext extends ContextWrapper {
 	private @CheckReturnValue <T> T proceed(final OutboundType type, final Intent intent, final @Nullable T negative_value, final WrappedValueProcedure<T> procedure) {
 		final ComponentName component = intent.getComponent();
 		final String target_pkg = component != null ? component.getPackageName() : intent.getPackage();
-		if (getPackageName().equals(target_pkg)) return procedure.proceed(intent);		// Self-targeting request is allowed unconditionally
-		if (shouldBlockRequestTarget(type, target_pkg)) {
-			if (DEBUG) Log.w(TAG, "Blocked outbound " + type + ": " + intent);
-			return negative_value;
+		if (target_pkg != null) {
+			if (getPackageName().equals(target_pkg)) return procedure.proceed(intent);	// Self-targeting request is allowed unconditionally
+
+			if (shouldBlockRequestTarget(type, target_pkg)) {
+				if (DEBUG) Log.w(TAG, "Blocked outbound " + type + ": " + intent);
+				return negative_value;
+			}
 		}
 		final int original_flags = adjustIntentFlags(type, intent);
 		try {
@@ -252,7 +267,7 @@ public class CondomContext extends ContextWrapper {
 				final ResolveInfo candidate = iterator.next();
 				final String pkg = type == OutboundType.QUERY_SERVICES ? candidate.serviceInfo.packageName
 						: (type == OutboundType.QUERY_RECEIVERS ? candidate.activityInfo.packageName : null);
-				if (shouldBlockRequestTarget(type, pkg)) {
+				if (pkg != null && shouldBlockRequestTarget(type, pkg)) {
 					iterator.remove();		// TODO: Not safe to assume the list returned from PackageManager is modifiable.
 					Log.w(TAG, "Filtered " + pkg + " from " + type + ": " + intent);
 				}
@@ -264,15 +279,15 @@ public class CondomContext extends ContextWrapper {
 	private int adjustIntentFlags(final OutboundType type, final Intent intent) {
 		final int original_flags = intent.getFlags();
 		if (mDryRun) return original_flags;
-		if (mExcludeBackgroundPackages && (type == OutboundType.BROADCAST || type == OutboundType.QUERY_RECEIVERS))
+		if (mExcludeBackgroundReceivers && (type == OutboundType.BROADCAST || type == OutboundType.QUERY_RECEIVERS))
 			intent.addFlags(SDK_INT >= N ? FLAG_RECEIVER_EXCLUDE_BACKGROUND : Intent.FLAG_RECEIVER_REGISTERED_ONLY);
 		if (SDK_INT >= HONEYCOMB_MR1 && mExcludeStoppedPackages)
 			intent.setFlags((intent.getFlags() & ~ Intent.FLAG_INCLUDE_STOPPED_PACKAGES) | Intent.FLAG_EXCLUDE_STOPPED_PACKAGES);
 		return original_flags;
 	}
 
-	private boolean shouldBlockRequestTarget(final OutboundType type, final @Nullable String target_pkg) {
-		return target_pkg != null && mOutboundJudge != null && ! mOutboundJudge.shouldAllow(type, target_pkg) && ! mDryRun;
+	private boolean shouldBlockRequestTarget(final OutboundType type, final String target_pkg) {
+		return mOutboundJudge != null && ! mOutboundJudge.shouldAllow(type, target_pkg) && ! mDryRun;
 	}
 
 	private CondomContext(final Context base, final @Nullable Context app_context, final @Nullable String tag, final boolean debuggable) {
@@ -286,7 +301,8 @@ public class CondomContext extends ContextWrapper {
 	private boolean mDryRun;
 	private OutboundJudge mOutboundJudge;
 	private boolean mExcludeStoppedPackages = true;
-	private boolean mExcludeBackgroundPackages = true;
+	private boolean mExcludeBackgroundReceivers = true;
+	private boolean mExcludeBackgroundServices = true;
 	private final Context mApplicationContext;
 	private final Context mBaseContext = new PseudoContextImpl(this);
 	private final PackageManager mPackageManager;
@@ -315,17 +331,72 @@ public class CondomContext extends ContextWrapper {
 
 		@Override public List<ResolveInfo> queryIntentServices(final Intent intent, final int flags) {
 			return proceedQuery(OutboundType.QUERY_SERVICES, intent, new WrappedValueProcedure<List<ResolveInfo>>() { @Override public List<ResolveInfo> proceed(final Intent intent) {
-				return CondomPackageManager.super.queryIntentServices(intent, flags);
+				final List<ResolveInfo> result = CondomPackageManager.super.queryIntentServices(intent, flags);
+				if (! mExcludeBackgroundServices || result.isEmpty()) return result;
+
+				final int my_uid = Process.myUid(); BackgroundUidFilter bg_uid_filter = null;
+				final Iterator<ResolveInfo> result_iterator = result.iterator();
+				while (result_iterator.hasNext()) {
+					final ResolveInfo candidate = result_iterator.next();
+					final int uid = candidate.serviceInfo.applicationInfo.uid;
+					if (uid == my_uid) continue;
+					if (bg_uid_filter == null) bg_uid_filter = new BackgroundUidFilter();
+					if (! bg_uid_filter.isUidNotBackground(uid)) result_iterator.remove();
+				}
+				return result;
 			}});
 		}
 
 		@Override public ResolveInfo resolveService(final Intent intent, final int flags) {
+			// Intent flags could only filter background receivers, we have to deal with services by ourselves.
 			return proceed(OutboundType.QUERY_SERVICES, intent, null, new WrappedValueProcedure<ResolveInfo>() { @Override public ResolveInfo proceed(final Intent intent) {
-				return CondomPackageManager.super.resolveService(intent, flags);
+				if (! mExcludeBackgroundServices) return CondomPackageManager.super.resolveService(intent, flags);
+
+				final List<ResolveInfo> candidates = CondomPackageManager.super.queryIntentServices(intent, flags);
+				if (candidates == null || candidates.isEmpty()) return null;
+
+				final int my_uid = Process.myUid();
+				BackgroundUidFilter bg_uid_filter = null;
+				for (final ResolveInfo candidate : candidates) {
+					final int uid = candidate.serviceInfo.applicationInfo.uid;
+					if (uid == my_uid) return candidate;		// Self UID is always allowed
+					if (bg_uid_filter == null) bg_uid_filter = new BackgroundUidFilter();
+					if (bg_uid_filter.isUidNotBackground(uid)) return candidate;
+				}
+				return null;
 			}});
 		}
 
 		CondomPackageManager(final PackageManager base) { super(base); }
+	}
+
+	private class BackgroundUidFilter {
+
+		boolean isUidNotBackground(final int uid) {
+			if (running_processes != null) {
+				for (final ActivityManager.RunningAppProcessInfo running_process : running_processes)
+					if (running_process.pid != 0 && running_process.importance < IMPORTANCE_BACKGROUND && running_process.uid == uid)
+						return true;	// Same UID does not guarantee same process. This is spared intentionally.
+			} else if (running_services != null) {
+				for (final ActivityManager.RunningServiceInfo running_service : running_services)
+					if (running_service.pid != 0 && running_service.uid == uid)	// Same UID does not guarantee same process. This is spared intentionally.
+						return true;	// Only running process is qualified, although getRunningServices() may not include all running app processes.
+			}
+			return false;
+		}
+
+		BackgroundUidFilter() {
+			if (SDK_INT >= LOLLIPOP_MR1) {		// getRunningAppProcesses() is limited on Android 5.1+.
+				running_services = ((ActivityManager) getSystemService(ACTIVITY_SERVICE)).getRunningServices(32);	// Too many services are never healthy, thus ignored intentionally.
+				running_processes = null;
+			} else {
+				running_services = null;
+				running_processes = ((ActivityManager) getSystemService(ACTIVITY_SERVICE)).getRunningAppProcesses();
+			}
+		}
+
+		private final @Nullable List<ActivityManager.RunningServiceInfo> running_services;
+		private final @Nullable List<ActivityManager.RunningAppProcessInfo> running_processes;
 	}
 
 	private static class CondomApplication extends Application {

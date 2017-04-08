@@ -7,6 +7,7 @@ import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.ActivityInfo;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
@@ -178,9 +179,13 @@ public class CondomContextBlockingTest {
 						if (service_or_receiver) {
 							resolve.serviceInfo = new ServiceInfo();
 							resolve.serviceInfo.packageName = pkg;
+							resolve.serviceInfo.applicationInfo = new ApplicationInfo();
+							resolve.serviceInfo.applicationInfo.uid = android.os.Process.myUid();
 						} else {
 							resolve.activityInfo = new ActivityInfo();
 							resolve.activityInfo.packageName = pkg;
+							resolve.activityInfo.applicationInfo = new ApplicationInfo();
+							resolve.activityInfo.applicationInfo.uid = android.os.Process.myUid();
 						}
 						return resolve;
 					}
