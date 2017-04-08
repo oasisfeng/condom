@@ -232,11 +232,11 @@ public class CondomContext extends ContextWrapper {
 		final ComponentName component = intent.getComponent();
 		final String target_pkg = component != null ? component.getPackageName() : intent.getPackage();
 		if (getPackageName().equals(target_pkg)) return procedure.proceed(intent);		// Self-targeting request is allowed unconditionally
-		final int original_flags = adjustIntentFlags(type, intent);
 		if (shouldBlockRequestTarget(type, target_pkg)) {
 			if (DEBUG) Log.w(TAG, "Blocked outbound " + type + ": " + intent);
 			return negative_value;
 		}
+		final int original_flags = adjustIntentFlags(type, intent);
 		try {
 			return procedure.proceed(intent);
 		} finally {
