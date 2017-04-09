@@ -194,32 +194,50 @@ public class CondomContextBlockingTest {
 		};
 		final CondomContext condom = CondomContext.wrap(context, TAG).setOutboundJudge(new CondomContext.OutboundJudge() {
 			@Override public boolean shouldAllow(final CondomContext.OutboundType type, final String target_pkg) {
+				mNumOutboudJudgeCalled.incrementAndGet();
 				return ! DISALLOWED_PACKAGE.equals(target_pkg);
 			}
 		});
 		final PackageManager pm = condom.getPackageManager();
 		condom.sendBroadcast(intent().setPackage(DISALLOWED_PACKAGE));
+		assertOutboundJudgeCalled(1);
 		condom.sendBroadcast(intent().setComponent(new ComponentName(DISALLOWED_PACKAGE, "A")));
+		assertOutboundJudgeCalled(1);
 		assertNull(pm.resolveService(intent().setPackage(DISALLOWED_PACKAGE), 0));
+		assertOutboundJudgeCalled(1);
 		assertEquals(1, pm.queryIntentServices(intent(), 0).size());
+		assertOutboundJudgeCalled(2);
 		assertEquals(1, pm.queryBroadcastReceivers(intent(), 0).size());
+		assertOutboundJudgeCalled(2);
 
 		delegation_expected.set(true);
 		condom.sendBroadcast(new Intent("com.example.TEST").setPackage(ALLOWED_PACKAGE));
 		assertTrue(mDelegated.get());
+		assertOutboundJudgeCalled(1);
 		condom.sendBroadcast(new Intent("com.example.TEST").setComponent(new ComponentName(ALLOWED_PACKAGE, "A")));
 		assertTrue(mDelegated.get());
+		assertOutboundJudgeCalled(1);
 		condom.sendBroadcast(new Intent("com.example.TEST"));
 		assertTrue(mDelegated.get());
+		assertOutboundJudgeCalled(0);
 
 		// Dry-run test
 		condom.setDryRun(true);
 		delegation_expected.set(true);
 		condom.sendBroadcast(new Intent("com.example.TEST").setPackage(DISALLOWED_PACKAGE));
+		assertOutboundJudgeCalled(1);
 		condom.sendBroadcast(new Intent("com.example.TEST").setComponent(new ComponentName(DISALLOWED_PACKAGE, "A")));
+		assertOutboundJudgeCalled(1);
 		condom.sendBroadcast(new Intent("com.example.TEST").setPackage(ALLOWED_PACKAGE));
+		assertOutboundJudgeCalled(1);
 		condom.sendBroadcast(new Intent("com.example.TEST").setComponent(new ComponentName(ALLOWED_PACKAGE, "A")));
+		assertOutboundJudgeCalled(1);
 		condom.sendBroadcast(new Intent("com.example.TEST"));
+		assertOutboundJudgeCalled(0);
+	}
+
+	private void assertOutboundJudgeCalled(final int count) {
+		assertEquals(count, mNumOutboudJudgeCalled.getAndSet(0));
 	}
 
 	@Before public void prepare() {
@@ -229,6 +247,7 @@ public class CondomContextBlockingTest {
 	private static Intent intent() { return new Intent("com.example.TEST").addFlags(INTENT_FLAGS); }
 
 	private final AtomicBoolean mDelegated = new AtomicBoolean();
+	private final AtomicInteger mNumOutboudJudgeCalled = new AtomicInteger();
 
 	private static final UserHandle USER = SDK_INT >= JELLY_BEAN_MR1 ? android.os.Process.myUserHandle() : null;
 	private static final int INTENT_FLAGS = Intent.FLAG_DEBUG_LOG_RESOLUTION | Intent.FLAG_FROM_BACKGROUND;

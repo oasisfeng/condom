@@ -87,7 +87,9 @@ public class CondomContext extends ContextWrapper {
 
 	public interface OutboundJudge {
 		/**
-		 * Judge the outbound request by its explicit target package.
+		 * Judge the outbound request or query by its explicit target package. For query requests, this will be called for each candidate.
+		 *
+		 * <p>Note: Implicit broadcast will never go through this.
 		 *
 		 * @return whether this outbound request should be allowed, or whether the query result entry should be included in the returned collection.
 		 *         Disallowed service request will simply fail and broadcast will be dropped.
@@ -241,8 +243,7 @@ public class CondomContext extends ContextWrapper {
 	}
 
 	private @CheckReturnValue <T> T proceed(final OutboundType type, final Intent intent, final @Nullable T negative_value, final WrappedValueProcedure<T> procedure) {
-		final ComponentName component = intent.getComponent();
-		final String target_pkg = component != null ? component.getPackageName() : intent.getPackage();
+		final String target_pkg = getTargetPackage(intent);
 		if (target_pkg != null) {
 			if (getPackageName().equals(target_pkg)) return procedure.proceed(intent);	// Self-targeting request is allowed unconditionally
 
@@ -262,18 +263,26 @@ public class CondomContext extends ContextWrapper {
 	private @CheckReturnValue List<ResolveInfo> proceedQuery(final OutboundType type, final Intent intent, final WrappedValueProcedure<List<ResolveInfo>> procedure) {
 		return proceed(type, intent, Collections.<ResolveInfo>emptyList(), new WrappedValueProcedure<List<ResolveInfo>>() { @Override public List<ResolveInfo> proceed(final Intent intent) {
 			final List<ResolveInfo> candidates = procedure.proceed(intent);
-			final Iterator<ResolveInfo> iterator = candidates.iterator();
-			while (iterator.hasNext()) {
-				final ResolveInfo candidate = iterator.next();
-				final String pkg = type == OutboundType.QUERY_SERVICES ? candidate.serviceInfo.packageName
-						: (type == OutboundType.QUERY_RECEIVERS ? candidate.activityInfo.packageName : null);
-				if (pkg != null && shouldBlockRequestTarget(type, pkg)) {
-					iterator.remove();		// TODO: Not safe to assume the list returned from PackageManager is modifiable.
-					Log.w(TAG, "Filtered " + pkg + " from " + type + ": " + intent);
+
+			if (getTargetPackage(intent) == null) {		// Package-targeted intent is already filtered by OutboundJudge in proceed().
+				final Iterator<ResolveInfo> iterator = candidates.iterator();
+				while (iterator.hasNext()) {
+					final ResolveInfo candidate = iterator.next();
+					final String pkg = type == OutboundType.QUERY_SERVICES ? candidate.serviceInfo.packageName
+							: (type == OutboundType.QUERY_RECEIVERS ? candidate.activityInfo.packageName : null);
+					if (pkg != null && shouldBlockRequestTarget(type, pkg)) {
+						iterator.remove();		// TODO: Not safe to assume the list returned from PackageManager is modifiable.
+						Log.w(TAG, "Filtered " + pkg + " from " + type + ": " + intent);
+					}
 				}
 			}
 			return candidates;
 		}});
+	}
+
+	private static String getTargetPackage(final Intent intent) {
+		final ComponentName component = intent.getComponent();
+		return component != null ? component.getPackageName() : intent.getPackage();
 	}
 
 	private int adjustIntentFlags(final OutboundType type, final Intent intent) {
