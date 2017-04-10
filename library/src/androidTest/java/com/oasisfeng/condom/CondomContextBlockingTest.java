@@ -301,6 +301,7 @@ public class CondomContextBlockingTest {
 					final ComponentInfo info = service_or_receiver ? (r.serviceInfo = new ServiceInfo()) : (r.activityInfo = new ActivityInfo());
 					info.packageName = pkg;
 					info.applicationInfo = new ApplicationInfo();
+					info.applicationInfo.packageName = pkg;
 					info.applicationInfo.uid = uid;
 					return r;
 				}

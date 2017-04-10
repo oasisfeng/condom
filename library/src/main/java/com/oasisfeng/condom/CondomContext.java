@@ -38,8 +38,10 @@ import android.support.annotation.Keep;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.support.annotation.VisibleForTesting;
+import android.util.EventLog;
 import android.util.Log;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -104,7 +106,7 @@ public class CondomContext extends ContextWrapper {
 	public CondomContext setDryRun(final boolean dry_run) {
 		if (dry_run == mDryRun) return this;
 		mDryRun = dry_run;
-		if (dry_run) Log.w(TAG, "Start dry-run mode, no outbound requests will be blocked actually, despite stated in log.");
+		if (dry_run) Log.w(TAG, "Start dry-run mode, no outbound requests will be blocked actually, despite later stated in log.");
 		else Log.w(TAG, "Stop dry-run mode.");
 		return this;
 	}
@@ -135,15 +137,26 @@ public class CondomContext extends ContextWrapper {
 	/* ****** Hooked Context APIs ****** */
 
 	@Override public boolean bindService(final Intent intent, final ServiceConnection conn, final int flags) {
-		return proceed(OutboundType.BIND_SERVICE, intent, Boolean.FALSE, new WrappedValueProcedure<Boolean>() { @Override public Boolean proceed(final Intent intent) {
-			return CondomContext.super.bindService(intent, conn, flags);
-		}});
+		final boolean result = proceed(OutboundType.BIND_SERVICE, intent, Boolean.FALSE, new WrappedValueProcedure<Boolean>() {
+			@Override public Boolean proceed(final Intent intent) {
+				return CondomContext.super.bindService(intent, conn, flags);
+			}
+		});
+		final String target_pkg;
+		if (result && (target_pkg = getTargetPackage(intent)) != null && ! getPackageName().equals(target_pkg))		// 3rd-party service
+			log(CondomEvent.BIND_PASS, target_pkg, intent.toString());
+		return result;
 	}
 
 	@Override public ComponentName startService(final Intent intent) {
-		return proceed(OutboundType.START_SERVICE, intent, null, new WrappedValueProcedure<ComponentName>() { @Override public ComponentName proceed(final Intent intent) {
-			return CondomContext.super.startService(intent);
-		}});
+		final ComponentName component = proceed(OutboundType.START_SERVICE, intent, null, new WrappedValueProcedure<ComponentName>() {
+			@Override public ComponentName proceed(final Intent intent) {
+				return CondomContext.super.startService(intent);
+			}
+		});
+		if (component != null && ! getPackageName().equals(component.getPackageName()))		// 3rd-party service
+			log(CondomEvent.START_PASS, component.getPackageName(), intent.toString());
+		return component;
 	}
 
 	@Override public void sendBroadcast(final Intent intent) {
@@ -216,15 +229,22 @@ public class CondomContext extends ContextWrapper {
 
 	// TODO: Protect outbound provider requests
 	@Override public ContentResolver getContentResolver() {
-		if (DEBUG) Log.d(TAG, "getContentResolver() is invoked", new Throwable());
+		logConcern(TAG, DEBUG, "getContentResolver");
 		return super.getContentResolver();
 	}
 
 	@Override public PackageManager getPackageManager() { return mPackageManager; }
 	@Override public Context getApplicationContext() { return mApplicationContext; }
 	@Override public Context getBaseContext() {
-		if (DEBUG) Log.d(TAG, "getBaseContext() is invoked", new Throwable());
+		logConcern(TAG, DEBUG, "getBaseContext");
 		return mBaseContext;
+	}
+
+	private static String getCaller() {
+		final StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+		if (stack.length <= 5) return "<bottom>";
+		final StackTraceElement caller = stack[5];
+		return caller.getClassName() + "." + caller.getMethodName() + ":" + caller.getLineNumber();
 	}
 
 	/* ********************************* */
@@ -247,10 +267,7 @@ public class CondomContext extends ContextWrapper {
 		if (target_pkg != null) {
 			if (getPackageName().equals(target_pkg)) return procedure.proceed(intent);	// Self-targeting request is allowed unconditionally
 
-			if (shouldBlockRequestTarget(type, target_pkg)) {
-				if (DEBUG) Log.w(TAG, "Blocked outbound " + type + ": " + intent);
-				return negative_value;
-			}
+			if (shouldBlockRequestTarget(type, target_pkg)) return negative_value;
 		}
 		final int original_flags = adjustIntentFlags(type, intent);
 		try {
@@ -264,16 +281,14 @@ public class CondomContext extends ContextWrapper {
 		return proceed(type, intent, Collections.<ResolveInfo>emptyList(), new WrappedValueProcedure<List<ResolveInfo>>() { @Override public List<ResolveInfo> proceed(final Intent intent) {
 			final List<ResolveInfo> candidates = procedure.proceed(intent);
 
-			if (getTargetPackage(intent) == null) {		// Package-targeted intent is already filtered by OutboundJudge in proceed().
+			if (getTargetPackage(intent) == null && mOutboundJudge != null) {	// Package-targeted intent is already filtered by OutboundJudge in proceed().
 				final Iterator<ResolveInfo> iterator = candidates.iterator();
 				while (iterator.hasNext()) {
 					final ResolveInfo candidate = iterator.next();
 					final String pkg = type == OutboundType.QUERY_SERVICES ? candidate.serviceInfo.packageName
 							: (type == OutboundType.QUERY_RECEIVERS ? candidate.activityInfo.packageName : null);
-					if (pkg != null && shouldBlockRequestTarget(type, pkg)) {
+					if (pkg != null && shouldBlockRequestTarget(type, pkg))
 						iterator.remove();		// TODO: Not safe to assume the list returned from PackageManager is modifiable.
-						Log.w(TAG, "Filtered " + pkg + " from " + type + ": " + intent);
-					}
 				}
 			}
 			return candidates;
@@ -297,6 +312,21 @@ public class CondomContext extends ContextWrapper {
 
 	private boolean shouldBlockRequestTarget(final OutboundType type, final String target_pkg) {
 		return mOutboundJudge != null && ! mOutboundJudge.shouldAllow(type, target_pkg) && ! mDryRun;
+	}
+
+	enum CondomEvent { CONCERN, BIND_PASS, START_PASS, FILTER_BG_SERVICE}
+
+	void log(final CondomEvent event, final Object... args) {
+		final Object[] event_args = new Object[2 + args.length];
+		event_args[0] = getPackageName(); event_args[1] = TAG.length() > 7/* "Condom.".length() */? TAG.substring(7) : "";
+		System.arraycopy(args, 0, event_args, 2, args.length);
+		EventLog.writeEvent(EVENT_TAG + event.ordinal(), event_args);
+		if (DEBUG) Log.d(TAG, event.name() + " " + Arrays.toString(args));
+	}
+
+	static void logConcern(final String tag, final boolean debug, final String label) {
+		EventLog.writeEvent(EVENT_TAG + CondomEvent.CONCERN.ordinal(), label, getCaller());
+		if (debug) Log.w(tag, label + " is invoked", new Throwable());
 	}
 
 	private CondomContext(final Context base, final @Nullable Context app_context, final @Nullable String tag, final boolean debuggable) {
@@ -328,6 +358,8 @@ public class CondomContext extends ContextWrapper {
 	 */
 	@VisibleForTesting static final int FLAG_RECEIVER_EXCLUDE_BACKGROUND = 0x00800000;
 
+	private static final int EVENT_TAG = "Condom".hashCode();
+
 	/* ****** Internal branch functionality ****** */
 
 	private class CondomPackageManager extends PackageManagerWrapper {
@@ -347,10 +379,13 @@ public class CondomContext extends ContextWrapper {
 				final Iterator<ResolveInfo> result_iterator = result.iterator();
 				while (result_iterator.hasNext()) {
 					final ResolveInfo candidate = result_iterator.next();
-					final int uid = candidate.serviceInfo.applicationInfo.uid;
-					if (uid == my_uid) continue;
+					final ApplicationInfo app_info = candidate.serviceInfo.applicationInfo;
+					if (app_info.uid == my_uid) continue;
 					if (bg_uid_filter == null) bg_uid_filter = new BackgroundUidFilter();
-					if (! bg_uid_filter.isUidNotBackground(uid)) result_iterator.remove();
+					if (! bg_uid_filter.isUidNotBackground(app_info.uid)) {
+						result_iterator.remove();
+						log(CondomEvent.FILTER_BG_SERVICE, app_info.packageName, intent.toString());
+					}
 				}
 				return result;
 			}});
@@ -367,10 +402,12 @@ public class CondomContext extends ContextWrapper {
 				final int my_uid = Process.myUid();
 				BackgroundUidFilter bg_uid_filter = null;
 				for (final ResolveInfo candidate : candidates) {
-					final int uid = candidate.serviceInfo.applicationInfo.uid;
+					final ApplicationInfo app_info = candidate.serviceInfo.applicationInfo;
+					final int uid = app_info.uid;
 					if (uid == my_uid) return candidate;		// Self UID is always allowed
 					if (bg_uid_filter == null) bg_uid_filter = new BackgroundUidFilter();
 					if (bg_uid_filter.isUidNotBackground(uid)) return candidate;
+					log(CondomEvent.FILTER_BG_SERVICE, app_info.packageName, intent.toString());
 				}
 				return null;
 			}});
@@ -431,7 +468,7 @@ public class CondomContext extends ContextWrapper {
 
 		// The actual context returned may not be semantically consistent. We'll keep an eye for it in the wild.
 		@Override public Context getBaseContext() {
-			if (DEBUG) Log.w(TAG, "Application.getBaseContext() is invoked", new Throwable());
+			logConcern(TAG, DEBUG, "Application.getBaseContext");
 			return super.getBaseContext();
 		}
 
