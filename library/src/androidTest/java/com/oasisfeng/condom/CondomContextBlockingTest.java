@@ -2,6 +2,7 @@ package com.oasisfeng.condom;
 
 import android.Manifest.permission;
 import android.annotation.TargetApi;
+import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContextWrapper;
@@ -9,6 +10,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.ComponentInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
@@ -101,6 +103,25 @@ public class CondomContextBlockingTest {
 		with(intents_with_inc_stop, EXPECT_BASE_CALLED, allServiceApis(condom));
 	}
 
+	@Test public void testPreventServiceInBackgroundPackages() {
+		final TestContext context = new TestContext();
+		context.mTestingBackgroundUid = true;
+		final CondomContext condom = CondomContext.wrap(context, TAG);
+		final PackageManager pm = condom.getPackageManager();
+		// Prevent service in background packages
+		condom.preventServiceInBackgroundPackages(true)	 .preventBroadcastToBackgroundPackages(false).preventWakingUpStoppedPackages(false);
+		assertEquals(3, pm.queryIntentServices(intent(), 0).size());
+		context.assertBaseCalled();
+		assertEquals("non.bg.service", pm.resolveService(intent(), 0).serviceInfo.packageName);
+		context.assertBaseCalled();
+
+		condom.preventServiceInBackgroundPackages(false).preventBroadcastToBackgroundPackages(false).preventWakingUpStoppedPackages(false);
+		assertEquals(4, condom.getPackageManager().queryIntentServices(intent(), 0).size());
+		context.assertBaseCalled();
+		assertEquals(7777777, pm.resolveService(intent(), 0).serviceInfo.applicationInfo.uid);
+		context.assertBaseCalled();
+	}
+
 	@SafeVarargs private static void with(final Intent[] intents, final Runnable expectation, final Consumer<Intent>... tests) {
 		for (final Intent intent : intents)
 			for (final Consumer<Intent> test : tests) {
@@ -110,7 +131,6 @@ public class CondomContextBlockingTest {
 	}
 
 	@Test public void testOutboundJudgeIncludingDryRun() {
-//		final AtomicBoolean delegation_expected = new AtomicBoolean(), delegated = new AtomicBoolean();
 		final TestContext context = new TestContext();
 		final CondomContext condom = CondomContext.wrap(context, TAG).setOutboundJudge(new CondomContext.OutboundJudge() {
 			@Override public boolean shouldAllow(final CondomContext.OutboundType type, final String target_pkg) {
@@ -227,7 +247,7 @@ public class CondomContextBlockingTest {
 
 
 	private class TestContext extends ContextWrapper {
-		@CallSuper protected void check(final Intent intent, final boolean broadcast) { assertBaseNotCalled(); mBaseCalled.set(true); }
+		@CallSuper void check(final Intent intent, final boolean broadcast) { assertBaseNotCalled(); mBaseCalled.set(true); }
 
 		@Override public ComponentName startService(final Intent intent) { check(intent, false); return null; }
 		@Override public boolean bindService(final Intent intent, final ServiceConnection c, final int f) { check(intent, false); return false; }
@@ -247,39 +267,42 @@ public class CondomContextBlockingTest {
 			return new PackageManagerWrapper(InstrumentationRegistry.getTargetContext().getPackageManager()) {
 				@Override public ResolveInfo resolveService(final Intent intent, final int flags) {
 					check(intent, false);
-					return buildResolveInfo(DISALLOWED_PACKAGE, true);
+					return buildResolveInfo(DISALLOWED_PACKAGE, true, 7777777);
 				}
 
 				@Override public List<ResolveInfo> queryIntentServices(final Intent intent, final int flags) {
 					check(intent, false);
 					final List<ResolveInfo> resolves = new ArrayList<>();
-					resolves.add(buildResolveInfo(ALLOWED_PACKAGE, true));
-					resolves.add(buildResolveInfo(DISALLOWED_PACKAGE, true));
+					if (mTestingBackgroundUid) {
+						final ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+						final List<ActivityManager.RunningServiceInfo> services = am.getRunningServices(32);
+						if (services != null) for (final ActivityManager.RunningServiceInfo service : services) {
+							if (service.uid == android.os.Process.myUid()) continue;
+							resolves.add(buildResolveInfo("bg.service", true, 999999999));	// Simulate a background UID.
+							resolves.add(buildResolveInfo("non.bg.service", true, service.uid));
+							break;
+						}
+					}
+					resolves.add(buildResolveInfo(ALLOWED_PACKAGE, true, android.os.Process.myUid()));
+					resolves.add(buildResolveInfo(DISALLOWED_PACKAGE, true, android.os.Process.myUid()));
 					return resolves;
 				}
 
 				@Override public List<ResolveInfo> queryBroadcastReceivers(final Intent intent, final int flags) {
 					check(intent, true);
 					final List<ResolveInfo> resolves = new ArrayList<>();
-					resolves.add(buildResolveInfo(ALLOWED_PACKAGE, false));
-					resolves.add(buildResolveInfo(DISALLOWED_PACKAGE, false));
+					resolves.add(buildResolveInfo(ALLOWED_PACKAGE, false, android.os.Process.myUid()));
+					resolves.add(buildResolveInfo(DISALLOWED_PACKAGE, false, android.os.Process.myUid()));
 					return resolves;
 				}
 
-				private ResolveInfo buildResolveInfo(final String pkg, final boolean service_or_receiver) {
-					final ResolveInfo resolve = new ResolveInfo() { @Override public String toString() { return "ResolveInfo{test}"; } };
-					if (service_or_receiver) {
-						resolve.serviceInfo = new ServiceInfo();
-						resolve.serviceInfo.packageName = pkg;
-						resolve.serviceInfo.applicationInfo = new ApplicationInfo();
-						resolve.serviceInfo.applicationInfo.uid = android.os.Process.myUid();
-					} else {
-						resolve.activityInfo = new ActivityInfo();
-						resolve.activityInfo.packageName = pkg;
-						resolve.activityInfo.applicationInfo = new ApplicationInfo();
-						resolve.activityInfo.applicationInfo.uid = android.os.Process.myUid();
-					}
-					return resolve;
+				private ResolveInfo buildResolveInfo(final String pkg, final boolean service_or_receiver, final int uid) {
+					final ResolveInfo r = new ResolveInfo() { @Override public String toString() { return "ResolveInfo{test}"; } };
+					final ComponentInfo info = service_or_receiver ? (r.serviceInfo = new ServiceInfo()) : (r.activityInfo = new ActivityInfo());
+					info.packageName = pkg;
+					info.applicationInfo = new ApplicationInfo();
+					info.applicationInfo.uid = uid;
+					return r;
 				}
 			};
 		}
@@ -289,6 +312,7 @@ public class CondomContextBlockingTest {
 
 		TestContext() { super((InstrumentationRegistry.getTargetContext())); }
 
+		boolean mTestingBackgroundUid;
 		private final AtomicBoolean mBaseCalled = new AtomicBoolean();
 	}
 
