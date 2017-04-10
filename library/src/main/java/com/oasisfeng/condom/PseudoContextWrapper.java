@@ -61,31 +61,10 @@ import static android.os.Build.VERSION_CODES.N;
  */
 @TargetApi(N)
 class PseudoContextWrapper extends Context {
-	Context mBase;
+	final Context mBase;
 
 	public PseudoContextWrapper(Context base) {
 		mBase = base;
-	}
-
-	/**
-	 * Set the base context for this ContextWrapper.  All calls will then be
-	 * delegated to the base context.  Throws
-	 * IllegalStateException if a base context has already been set.
-	 *
-	 * @param base The new base context for this wrapper.
-	 */
-	protected void attachBaseContext(Context base) {
-		if (mBase != null) {
-			throw new IllegalStateException("Base context already set");
-		}
-		mBase = base;
-	}
-
-	/**
-	 * @return the base context as set by the constructor or setBaseContext
-	 */
-	Context getBaseContext() {
-		return mBase;
 	}
 
 	@Override

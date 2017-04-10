@@ -147,69 +147,69 @@ public class CondomContext extends ContextWrapper {
 	}
 
 	@Override public void sendBroadcast(final Intent intent) {
-		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+		proceedBroadcast(intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
 			CondomContext.super.sendBroadcast(intent);
 		}});
 	}
 
 	@Override public void sendBroadcast(final Intent intent, final String receiverPermission) {
-		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+		proceedBroadcast(intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
 			CondomContext.super.sendBroadcast(intent, receiverPermission);
 		}});
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user) {
-		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+		proceedBroadcast(intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
 			CondomContext.super.sendBroadcastAsUser(intent, user);
 		}});
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission) {
-		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+		proceedBroadcast(intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
 			CondomContext.super.sendBroadcastAsUser(intent, user, receiverPermission);
 		}});
 	}
 
 	@Override public void sendOrderedBroadcast(final Intent intent, final String receiverPermission) {
-		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+		proceedBroadcast(intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
 			CondomContext.super.sendOrderedBroadcast(intent, receiverPermission);
 		}});
 	}
 
 	@Override public void sendOrderedBroadcast(final Intent intent, final String receiverPermission, final BroadcastReceiver resultReceiver,
 											   final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
-		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+		proceedBroadcast(intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
 			CondomContext.super.sendOrderedBroadcast(intent, receiverPermission, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 		}});
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendOrderedBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission, final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
-		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+		proceedBroadcast(intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
 			CondomContext.super.sendOrderedBroadcastAsUser(intent, user, receiverPermission, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 		}});
 	}
 
 	@Override public void sendStickyBroadcast(final Intent intent) {
-		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+		proceedBroadcast(intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
 			CondomContext.super.sendStickyBroadcast(intent);
 		}});
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendStickyBroadcastAsUser(final Intent intent, final UserHandle user) {
-		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+		proceedBroadcast(intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
 			CondomContext.super.sendStickyBroadcastAsUser(intent, user);
 		}});
 	}
 
 	@Override public void sendStickyOrderedBroadcast(final Intent intent, final BroadcastReceiver resultReceiver, final Handler scheduler,
 													 final int initialCode, final String initialData, final Bundle initialExtras) {
-		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+		proceedBroadcast(intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
 			CondomContext.super.sendStickyOrderedBroadcast(intent, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 		}});
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendStickyOrderedBroadcastAsUser(final Intent intent, final UserHandle user, final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
-		proceed(OutboundType.BROADCAST, intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
+		proceedBroadcast(intent, new WrappedProcedure() { @Override public void run(final Intent intent) {
 			CondomContext.super.sendStickyOrderedBroadcastAsUser(intent, user, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 		}});
 	}
@@ -238,8 +238,8 @@ public class CondomContext extends ContextWrapper {
 		@Override public Void proceed(final Intent intent) { run(intent); return null; }
 	}
 
-	@SuppressWarnings("ResultOfMethodCallIgnored") private void proceed(final OutboundType type, final Intent intent, final WrappedProcedure procedure) {
-		proceed(type, intent, null, procedure);
+	@SuppressWarnings("ResultOfMethodCallIgnored") private void proceedBroadcast(final Intent intent, final WrappedProcedure procedure) {
+		proceed(OutboundType.BROADCAST, intent, null, procedure);
 	}
 
 	private @CheckReturnValue <T> T proceed(final OutboundType type, final Intent intent, final @Nullable T negative_value, final WrappedValueProcedure<T> procedure) {
