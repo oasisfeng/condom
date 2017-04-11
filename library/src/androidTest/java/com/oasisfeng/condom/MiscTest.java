@@ -18,14 +18,14 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.HONEYCOMB_MR1;
 import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertTrue;
-import static junit.framework.Assert.fail;
 
 /**
  * Miscellaneous test cases
@@ -35,6 +35,8 @@ import static junit.framework.Assert.fail;
 public class MiscTest {
 
 	@Test public void testEventLog() throws IOException {
+		readNewEvents(CondomContext.CondomEvent.CONCERN);
+
 		condom.getBaseContext();
 		Object[] data = readLastEvent(CondomContext.CondomEvent.CONCERN);
 		assertEquals("getBaseContext", data[0]);
@@ -43,11 +45,6 @@ public class MiscTest {
 		((Application) condom.getApplicationContext()).getBaseContext();
 		data = readLastEvent(CondomContext.CondomEvent.CONCERN);
 		assertEquals("Application.getBaseContext", data[0]);
-		assertCallerMatch(data);
-
-		condom.getContentResolver();
-		data = readLastEvent(CondomContext.CondomEvent.CONCERN);
-		assertEquals("getContentResolver", data[0]);
 		assertCallerMatch(data);
 
 		condom.getPackageManager().getInstalledApplications(0);
@@ -75,20 +72,24 @@ public class MiscTest {
 		assertEquals(intent.getPackage(), data[2]);
 		assertEquals(intent.toString(), data[3]);
 
-		condom.getPackageManager().queryIntentServices(intent.setPackage(null).setComponent(null), 0);
-		data = readNextEvent(CondomContext.CondomEvent.FILTER_BG_SERVICE, false);
+		final List<ResolveInfo> result = condom.getPackageManager().queryIntentServices(intent.setPackage(null).setComponent(null), 0);
+		assertEquals(1, result.size());		// 1 left: non.bg.service
+		final List<EventLog.Event> events = readNewEvents(CondomContext.CondomEvent.FILTER_BG_SERVICE);
+		assertEquals(2, events.size());		// 2 filtered: bg.service.*
+		data = (Object[]) events.get(0).getData();
 		assertEquals(condom.getPackageName(), data[0]);
 		assertEquals(TAG, data[1]);
 		assertEquals("bg.service.1", data[2]);
 		final String expected_intent = new Intent(intent).addFlags(SDK_INT >= HONEYCOMB_MR1 ? Intent.FLAG_EXCLUDE_STOPPED_PACKAGES : 0).toString();	// Flags altered
 		assertEquals(expected_intent, data[3]);
-		data = readNextEvent(CondomContext.CondomEvent.FILTER_BG_SERVICE, true);
+		data = (Object[]) events.get(1).getData();
 		assertEquals(condom.getPackageName(), data[0]);
 		assertEquals(TAG, data[1]);
 		assertEquals("bg.service.2", data[2]);
 		assertEquals(expected_intent, data[3]);
 
-		condom.getPackageManager().resolveService(intent, 0);
+		final ResolveInfo resolve = condom.getPackageManager().resolveService(intent, 0);
+		assertEquals("non.bg.service", resolve.serviceInfo.applicationInfo.packageName);
 		data = readLastEvent(CondomContext.CondomEvent.FILTER_BG_SERVICE);
 		assertEquals(condom.getPackageName(), data[0]);
 		assertEquals(TAG, data[1]);
@@ -125,26 +126,29 @@ public class MiscTest {
 	}
 
 	private static Object[] readLastEvent(final CondomContext.CondomEvent type) throws IOException {
-		return readNextEvent(type, true);
+		final List<EventLog.Event> events = readNewEvents(type);
+		assertEquals(1, events.size());
+		return (Object[]) events.get(0).getData();
 	}
 
-	private static Object[] readNextEvent(final CondomContext.CondomEvent type, final boolean assert_no_more) throws IOException {
+	private static List<EventLog.Event> readNewEvents(final CondomContext.CondomEvent type) throws IOException {
 		final List<EventLog.Event> events = new ArrayList<>();
 		EventLog.readEvents(new int[] { "Condom".hashCode() + type.ordinal() }, events);
-		assertFalse(events.isEmpty());
+		if (events.isEmpty()) return Collections.emptyList();
 		final EventLog.Event last = events.get(events.size() - 1);
 		if (mLastEventTime == 0) {
 			mLastEventTime = last.getTimeNanos();
-			return (Object[]) last.getData();
+			return events;
 		}
-		for (final EventLog.Event event : events)
+		final Iterator<EventLog.Event> iterator = events.iterator();
+		while (iterator.hasNext()) {
+			final EventLog.Event event = iterator.next();
 			if (event.getTimeNanos() > mLastEventTime) {
-				if (assert_no_more && last.getTimeNanos() > event.getTimeNanos()) fail("Still more events");
 				mLastEventTime = event.getTimeNanos();
-				return (Object[]) event.getData();
-			}
-		fail("No more event");
-		return new Object[0];
+				break;
+			} else iterator.remove();
+		}
+		return events;
 	}
 
 	private static long mLastEventTime;
@@ -178,7 +182,7 @@ public class MiscTest {
 				}
 
 				private ResolveInfo buildResolveInfo(final String pkg, final int uid) {
-					final ResolveInfo resolve = new ResolveInfo();
+					final ResolveInfo resolve = new ResolveInfo() { @Override public String toString() { return "ResolveInfo{test}"; } };
 					resolve.serviceInfo = new ServiceInfo();
 					resolve.serviceInfo.packageName = pkg;
 					resolve.serviceInfo.applicationInfo = new ApplicationInfo();
