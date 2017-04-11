@@ -38,17 +38,27 @@ public class MiscTest {
 		condom.getBaseContext();
 		Object[] data = readLastEvent(CondomContext.CondomEvent.CONCERN);
 		assertEquals("getBaseContext", data[0]);
-		assertTrue(data[1].toString(), data[1].toString().startsWith(MiscTest.class.getName() + ".testEventLog:"));
+		assertCallerMatch(data);
 
 		((Application) condom.getApplicationContext()).getBaseContext();
 		data = readLastEvent(CondomContext.CondomEvent.CONCERN);
 		assertEquals("Application.getBaseContext", data[0]);
-		assertTrue(data[1].toString(), data[1].toString().startsWith(MiscTest.class.getName() + ".testEventLog:"));
+		assertCallerMatch(data);
 
 		condom.getContentResolver();
 		data = readLastEvent(CondomContext.CondomEvent.CONCERN);
 		assertEquals("getContentResolver", data[0]);
-		assertTrue(data[1].toString(), data[1].toString().startsWith(MiscTest.class.getName() + ".testEventLog:"));
+		assertCallerMatch(data);
+
+		condom.getPackageManager().getInstalledApplications(0);
+		data = readLastEvent(CondomContext.CondomEvent.CONCERN);
+		assertEquals("PackageManager.getInstalledApplications", data[0]);
+		assertCallerMatch(data);
+
+		condom.getPackageManager().getInstalledPackages(0);
+		data = readLastEvent(CondomContext.CondomEvent.CONCERN);
+		assertEquals("PackageManager.getInstalledPackages", data[0]);
+		assertCallerMatch(data);
 
 		final Intent intent = new Intent().setPackage("a.b.c");
 		condom.bindService(intent, SERVICE_CONNECTION, 0);
@@ -107,6 +117,11 @@ public class MiscTest {
 		assertEquals("", data[1]);
 		assertEquals(intent.getComponent().getPackageName(), data[2]);
 		assertEquals(intent.toString(), data[3]);
+	}
+
+	private static void assertCallerMatch(final Object[] data) {
+		final String string = data[1].toString();
+		assertTrue(string, string.startsWith(MiscTest.class.getName() + ".testEventLog:"));
 	}
 
 	private static Object[] readLastEvent(final CondomContext.CondomEvent type) throws IOException {

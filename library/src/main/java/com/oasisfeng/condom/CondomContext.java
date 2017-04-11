@@ -28,6 +28,7 @@ import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.os.Bundle;
@@ -314,7 +315,7 @@ public class CondomContext extends ContextWrapper {
 		return mOutboundJudge != null && ! mOutboundJudge.shouldAllow(type, target_pkg) && ! mDryRun;
 	}
 
-	enum CondomEvent { CONCERN, BIND_PASS, START_PASS, FILTER_BG_SERVICE}
+	enum CondomEvent { CONCERN, BIND_PASS, START_PASS, FILTER_BG_SERVICE }
 
 	void log(final CondomEvent event, final Object... args) {
 		final Object[] event_args = new Object[2 + args.length];
@@ -411,6 +412,16 @@ public class CondomContext extends ContextWrapper {
 				}
 				return null;
 			}});
+		}
+
+		@Override public List<PackageInfo> getInstalledPackages(final int flags) {
+			logConcern(TAG, DEBUG, "PackageManager.getInstalledPackages");
+			return super.getInstalledPackages(flags);
+		}
+
+		@Override public List<ApplicationInfo> getInstalledApplications(final int flags) {
+			logConcern(TAG, DEBUG, "PackageManager.getInstalledApplications");
+			return super.getInstalledApplications(flags);
 		}
 
 		CondomPackageManager(final PackageManager base) { super(base); }
