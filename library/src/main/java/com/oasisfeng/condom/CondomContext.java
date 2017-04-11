@@ -25,11 +25,13 @@ import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.ContextWrapper;
+import android.content.IContentProvider;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ProviderInfo;
 import android.content.pm.ResolveInfo;
 import android.os.Bundle;
 import android.os.Handler;
@@ -51,6 +53,7 @@ import javax.annotation.CheckReturnValue;
 import javax.annotation.ParametersAreNonnullByDefault;
 
 import static android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_BACKGROUND;
+import static android.content.pm.ApplicationInfo.FLAG_STOPPED;
 import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.HONEYCOMB_MR1;
 import static android.os.Build.VERSION_CODES.ICE_CREAM_SANDWICH;
@@ -86,11 +89,12 @@ public class CondomContext extends ContextWrapper {
 		} else return new CondomContext(base, base == app_context ? null : new CondomContext(app_context, app_context, tag, debuggable), tag, debuggable);
 	}
 
-	enum OutboundType { START_SERVICE, BIND_SERVICE, BROADCAST, QUERY_SERVICES, QUERY_RECEIVERS }
+	enum OutboundType { START_SERVICE, BIND_SERVICE, BROADCAST, CONTENT, QUERY_SERVICES, QUERY_RECEIVERS }
 
 	public interface OutboundJudge {
 		/**
-		 * Judge the outbound request or query by its explicit target package. For query requests, this will be called for each candidate.
+		 * Judge the outbound request or query by its explicit target package. For query requests, this will be called for each candidate,
+		 * before additional filtering (e.g. {@link #preventServiceInBackgroundPackages(boolean)}) is applied.
 		 *
 		 * <p>Note: Implicit broadcast will never go through this.
 		 *
@@ -228,12 +232,7 @@ public class CondomContext extends ContextWrapper {
 		}});
 	}
 
-	// TODO: Protect outbound provider requests
-	@Override public ContentResolver getContentResolver() {
-		logConcern(TAG, DEBUG, "getContentResolver");
-		return super.getContentResolver();
-	}
-
+	@Override public ContentResolver getContentResolver() { return mContentResolver; }
 	@Override public PackageManager getPackageManager() { return mPackageManager; }
 	@Override public Context getApplicationContext() { return mApplicationContext; }
 	@Override public Context getBaseContext() {
@@ -311,7 +310,7 @@ public class CondomContext extends ContextWrapper {
 		return original_flags;
 	}
 
-	private boolean shouldBlockRequestTarget(final OutboundType type, final String target_pkg) {
+	boolean shouldBlockRequestTarget(final OutboundType type, final String target_pkg) {
 		return mOutboundJudge != null && ! mOutboundJudge.shouldAllow(type, target_pkg) && ! mDryRun;
 	}
 
@@ -334,6 +333,7 @@ public class CondomContext extends ContextWrapper {
 		super(base);
 		mApplicationContext = app_context != null ? app_context : this;
 		mPackageManager = new CondomPackageManager(base.getPackageManager());
+		mContentResolver = new CondomContentResolver(base, base.getContentResolver());
 		TAG = tag == null ? "Condom" : "Condom." + tag;
 		DEBUG = debuggable;
 	}
@@ -346,6 +346,7 @@ public class CondomContext extends ContextWrapper {
 	private final Context mApplicationContext;
 	private final Context mBaseContext = new PseudoContextImpl(this);
 	private final PackageManager mPackageManager;
+	private final ContentResolver mContentResolver;
 	private final String TAG;
 	private final boolean DEBUG;
 
@@ -454,6 +455,27 @@ public class CondomContext extends ContextWrapper {
 
 		private final @Nullable List<ActivityManager.RunningServiceInfo> running_services;
 		private final @Nullable List<ActivityManager.RunningAppProcessInfo> running_processes;
+	}
+
+	private class CondomContentResolver extends ContentResolverWrapper {
+
+		@Override public IContentProvider acquireUnstableProvider(final Context c, final String name) {
+			if (! checkProvider(c, name)) return null;
+			return super.acquireUnstableProvider(c, name);
+		}
+
+		@Override public IContentProvider acquireProvider(final Context c, final String name) {
+			if (! checkProvider(c, name)) return null;
+			return super.acquireProvider(c, name);
+		}
+
+		private boolean checkProvider(final Context c, final String name) {
+			final ProviderInfo provider = c.getPackageManager().resolveContentProvider(name, 0);
+			return ! shouldBlockRequestTarget(OutboundType.CONTENT, provider.packageName)
+					&& (SDK_INT < HONEYCOMB_MR1 || ! mExcludeStoppedPackages || (provider.applicationInfo.flags & FLAG_STOPPED) == 0);
+		}
+
+		CondomContentResolver(final Context context, final ContentResolver base) { super(context, base); }
 	}
 
 	private static class CondomApplication extends Application {
