@@ -1,3 +1,4 @@
+[![Download](https://api.bintray.com/packages/oasisfeng/maven/condom/images/download.svg)](https://bintray.com/oasisfeng/maven/condom/_latestVersion)
 [![Build Status](https://travis-ci.org/oasisfeng/condom.svg?branch=master)](https://travis-ci.org/oasisfeng/condom)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
@@ -12,17 +13,25 @@ the overall device performance.
 
 ## Quick Start
 
-Most 3rd-party SDKs require explicit initialization with a `Context` instance, something like:
+1. Add dependency to this library in build.gradle of your project module.
 
-```
-XxxClient.init(context, ...);
-```
+   ```
+   compile 'com.oasisfeng.condom:library:1.0.0@aar'
+   ```
 
-Just change the `context` paramter to `CondomContext.wrap(context)`, like this:
+2. Migration the initialization code of 3rd-party SDK.
 
-```
-XxxClient.init(CondomContext.wrap(context, "XxxSDK"), ...);
-```
+   Most 3rd-party SDKs require explicit initialization with a `Context` instance, something like:
+
+   ```
+   XxxClient.init(context, ...);
+   ```
+
+   Just change the `context` paramter to `CondomContext.wrap(context)`, like this:
+
+   ```
+   XxxClient.init(CondomContext.wrap(context, "XxxSDK"), ...);
+   ```
 
 That's it! Enjoy the protection.
 
@@ -41,20 +50,31 @@ That's it! Enjoy the protection.
 
 ## 快速开始
 
-常见的三方SDK需要应用在启动阶段调用其初始化方法，一般包含`Context`参数，例如：
+1. 首先在工程中添加对此项目的依赖项。
 
-```
-XxxClient.init(context, ...);
-```
+   对于Gradle工程，直接在模块的依赖项清单中添加下面这一行：
 
-只需将其修改为：
+   ```
+   compile 'com.oasisfeng.condom:library:1.0.0@aar'
+   ```
 
-```
-XxxClient.init(CondomContext.wrap(context, "XxxSDK"), ...);
-```
+   对于非Gradle工程，请[下载AAR（或JAR）](http://jcenter.bintray.com/com/oasisfeng/condom/library/)并放进项目模块本地的 `libs` 路径中。
 
-其中参数`tag`（上例中的"XxxSDK"）为开发者根据需要指定的用于区分多个不同`CondomContext`实例的标识，将出现在日志的TAG后缀。
-如果只有一个`CondomContext`实例，或者不需要区分，则传入null亦可。
+2. 略微修改三方SDK的初始化代码。
+
+   常见的三方SDK需要应用在启动阶段调用其初始化方法，一般包含`Context`参数，例如：
+
+   ```
+   XxxClient.init(context, ...);
+   ```
+
+   只需将其修改为：
+
+   ```
+   XxxClient.init(CondomContext.wrap(context, "XxxSDK"), ...);
+   ```
+
+   其中参数`tag`（上例中的"XxxSDK"）为开发者根据需要指定的用于区分多个不同`CondomContext`实例的标识，将出现在日志的TAG后缀。如果只有一个`CondomContext`实例，或者不需要区分，则传入null亦可。
 
 就这样简单的一行修改，三方SDK就无法再使用这个套上了保险套的`Context`去唤醒当前并没有进程在运行的其它app。
 （已有进程在运行中的app仍可以被关联调用，因为不存在大量进程连锁创建的巨大资源开销，因此是被允许的。这也是Android O开始实施的限制原则）
