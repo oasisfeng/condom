@@ -314,6 +314,11 @@ public class CondomContext extends ContextWrapper {
 		return mOutboundJudge != null && ! mOutboundJudge.shouldAllow(type, target_pkg) && ! mDryRun;
 	}
 
+	boolean shouldAllowProvider(final ProviderInfo provider) {
+		return getPackageName().equals(provider.packageName) || ! shouldBlockRequestTarget(OutboundType.CONTENT, provider.packageName)
+				&& (SDK_INT < HONEYCOMB_MR1 || ! mExcludeStoppedPackages || (provider.applicationInfo.flags & FLAG_STOPPED) == 0);
+	}
+
 	enum CondomEvent { CONCERN, BIND_PASS, START_PASS, FILTER_BG_SERVICE }
 
 	void log(final CondomEvent event, final Object... args) {
@@ -339,7 +344,7 @@ public class CondomContext extends ContextWrapper {
 	}
 
 	private boolean mDryRun;
-	private OutboundJudge mOutboundJudge;
+	private @Nullable OutboundJudge mOutboundJudge;
 	private boolean mExcludeStoppedPackages = true;
 	private boolean mExcludeBackgroundReceivers = true;
 	private boolean mExcludeBackgroundServices = true;
@@ -415,6 +420,12 @@ public class CondomContext extends ContextWrapper {
 			}});
 		}
 
+		@Override public ProviderInfo resolveContentProvider(final String name, final int flags) {
+			final ProviderInfo provider = super.resolveContentProvider(name, flags);
+			if (! shouldAllowProvider(provider)) return null;
+			return provider;
+		}
+
 		@Override public List<PackageInfo> getInstalledPackages(final int flags) {
 			logConcern(TAG, DEBUG, "PackageManager.getInstalledPackages");
 			return super.getInstalledPackages(flags);
@@ -460,19 +471,17 @@ public class CondomContext extends ContextWrapper {
 	private class CondomContentResolver extends ContentResolverWrapper {
 
 		@Override public IContentProvider acquireUnstableProvider(final Context c, final String name) {
-			if (! checkProvider(c, name)) return null;
+			if (! shouldAllowProvider(c, name)) return null;
 			return super.acquireUnstableProvider(c, name);
 		}
 
 		@Override public IContentProvider acquireProvider(final Context c, final String name) {
-			if (! checkProvider(c, name)) return null;
+			if (! shouldAllowProvider(c, name)) return null;
 			return super.acquireProvider(c, name);
 		}
 
-		private boolean checkProvider(final Context c, final String name) {
-			final ProviderInfo provider = c.getPackageManager().resolveContentProvider(name, 0);
-			return ! shouldBlockRequestTarget(OutboundType.CONTENT, provider.packageName)
-					&& (SDK_INT < HONEYCOMB_MR1 || ! mExcludeStoppedPackages || (provider.applicationInfo.flags & FLAG_STOPPED) == 0);
+		private boolean shouldAllowProvider(final Context c, final String name) {
+			return CondomContext.this.shouldAllowProvider(c.getPackageManager().resolveContentProvider(name, 0));
 		}
 
 		CondomContentResolver(final Context context, final ContentResolver base) { super(context, base); }

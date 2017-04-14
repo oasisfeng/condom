@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2017 Oasis Feng. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.oasisfeng.condom;
 
 import android.Manifest.permission;
@@ -12,12 +29,14 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.ComponentInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ProviderInfo;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.UserHandle;
+import android.provider.Settings;
 import android.support.annotation.CallSuper;
 import android.support.test.InstrumentationRegistry;
 
@@ -36,8 +55,10 @@ import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR1;
 import static android.os.Build.VERSION_CODES.N;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertFalse;
+import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.assertTrue;
+import static junit.framework.Assert.fail;
 
 @SuppressWarnings("deprecation") @ParametersAreNonnullByDefault
 public class CondomContextBlockingTest {
@@ -120,6 +141,39 @@ public class CondomContextBlockingTest {
 		context.assertBaseCalled();
 		assertEquals(7777777, pm.resolveService(intent(), 0).serviceInfo.applicationInfo.uid);
 		context.assertBaseCalled();
+	}
+
+	@Test public void testContentProvider() {
+		final TestContext context = new TestContext();
+		final CondomContext condom = CondomContext.wrap(context, TAG);
+
+		// Outbound judge
+		condom.setOutboundJudge(new CondomContext.OutboundJudge() { @Override public boolean shouldAllow(final CondomContext.OutboundType type, final String target_pkg) {
+			final String settings_pkg = InstrumentationRegistry.getTargetContext().getPackageManager().resolveContentProvider(Settings.System.CONTENT_URI.getAuthority(), 0).packageName;
+			return ! settings_pkg.equals(target_pkg);
+		}});
+		assertNull(condom.getPackageManager().resolveContentProvider(Settings.AUTHORITY, 0));
+		try {
+			condom.getContentResolver().call(Settings.System.CONTENT_URI, "test", null, null);
+			fail("Provider not blocked by outbound judge.");
+		} catch (final IllegalArgumentException ignored) {}
+		//noinspection ConstantConditions
+		condom.setOutboundJudge(null);
+
+		// Regular provider access
+		final String actual_android_id = Settings.System.getString(condom.getContentResolver(), Settings.System.ANDROID_ID);
+		final String expected_android_id = Settings.System.getString(context.getContentResolver(), Settings.System.ANDROID_ID);
+		assertNotNull(actual_android_id);
+		assertEquals(expected_android_id, actual_android_id);
+
+		// Prevent stopped package
+		context.mTestingStoppedProvider = true;
+		assertNull(condom.getPackageManager().resolveContentProvider(Settings.AUTHORITY, 0));
+		try {
+			condom.getContentResolver().call(Settings.System.CONTENT_URI, "test", null, null);
+			fail("Stopped provider not blocked.");
+		} catch (final IllegalArgumentException ignored) {}
+		context.mTestingStoppedProvider = false;
 	}
 
 	@SafeVarargs private static void with(final Intent[] intents, final Runnable expectation, final Consumer<Intent>... tests) {
@@ -265,6 +319,7 @@ public class CondomContextBlockingTest {
 
 		@Override public PackageManager getPackageManager() {
 			return new PackageManagerWrapper(InstrumentationRegistry.getTargetContext().getPackageManager()) {
+
 				@Override public ResolveInfo resolveService(final Intent intent, final int flags) {
 					check(intent, false);
 					return buildResolveInfo(DISALLOWED_PACKAGE, true, 7777777);
@@ -296,6 +351,12 @@ public class CondomContextBlockingTest {
 					return resolves;
 				}
 
+				@Override public ProviderInfo resolveContentProvider(final String name, final int flags) {
+					final ProviderInfo info = super.resolveContentProvider(name, flags);
+					if (mTestingStoppedProvider) info.applicationInfo.flags |= ApplicationInfo.FLAG_STOPPED;
+					return info;
+				}
+
 				private ResolveInfo buildResolveInfo(final String pkg, final boolean service_or_receiver, final int uid) {
 					final ResolveInfo r = new ResolveInfo() { @Override public String toString() { return "ResolveInfo{test}"; } };
 					final ComponentInfo info = service_or_receiver ? (r.serviceInfo = new ServiceInfo()) : (r.activityInfo = new ActivityInfo());
@@ -314,6 +375,7 @@ public class CondomContextBlockingTest {
 		TestContext() { super((InstrumentationRegistry.getTargetContext())); }
 
 		boolean mTestingBackgroundUid;
+		boolean mTestingStoppedProvider;
 		private final AtomicBoolean mBaseCalled = new AtomicBoolean();
 	}
 
