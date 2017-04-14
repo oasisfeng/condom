@@ -9,6 +9,7 @@ android:
     - android-22 # For emulator to work
     - android-26
     - extra-android-m2repository
+    - sys-img-armeabi-v7a-android-15
     - sys-img-armeabi-v7a-android-22
   licenses:
     - android-sdk-license-.+
@@ -22,3 +23,6 @@ before_script:
   - chmod +x gradlew
   - android-wait-for-emulator
   - adb shell input keyevent 82 &
+after_failure:
+  - cat $TRAVIS_BUILD_DIR/library/build/outputs/lint-results-debug.xml
+  - cat $TRAVIS_BUILD_DIR/library/build/reports/androidTests/connected/index.html
