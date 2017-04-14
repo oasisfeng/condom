@@ -17,7 +17,6 @@
 
 package com.oasisfeng.condom;
 
-import android.annotation.TargetApi;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentResolver;
@@ -42,6 +41,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.UserHandle;
+import android.support.annotation.RequiresApi;
+import android.support.annotation.RestrictTo;
 import android.view.Display;
 
 import java.io.File;
@@ -51,6 +52,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+import static android.os.Build.VERSION_CODES.HONEYCOMB;
+import static android.os.Build.VERSION_CODES.JELLY_BEAN;
+import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR1;
+import static android.os.Build.VERSION_CODES.KITKAT;
+import static android.os.Build.VERSION_CODES.LOLLIPOP;
+import static android.os.Build.VERSION_CODES.M;
 import static android.os.Build.VERSION_CODES.N;
 
 /**
@@ -59,7 +66,7 @@ import static android.os.Build.VERSION_CODES.N;
  *
  * Created by Oasis on 2017/3/26.
  */
-@TargetApi(N)
+@RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
 class PseudoContextWrapper extends Context {
 	final Context mBase;
 
@@ -137,12 +144,12 @@ class PseudoContextWrapper extends Context {
 		return mBase.getSharedPreferences(name, mode);
 	}
 
-	@Override
+	@RequiresApi(N) @Override
 	public boolean moveSharedPreferencesFrom(Context sourceContext, String name) {
 		return mBase.moveSharedPreferencesFrom(sourceContext, name);
 	}
 
-	@Override
+	@RequiresApi(N) @Override
 	public boolean deleteSharedPreferences(String name) {
 		return mBase.deleteSharedPreferences(name);
 	}
@@ -174,7 +181,7 @@ class PseudoContextWrapper extends Context {
 		return mBase.fileList();
 	}
 
-	@Override
+	@RequiresApi(N) @Override
 	public File getDataDir() {
 		return mBase.getDataDir();
 	}
@@ -184,7 +191,7 @@ class PseudoContextWrapper extends Context {
 		return mBase.getFilesDir();
 	}
 
-	@Override
+	@RequiresApi(LOLLIPOP) @Override
 	public File getNoBackupFilesDir() {
 		return mBase.getNoBackupFilesDir();
 	}
@@ -194,17 +201,17 @@ class PseudoContextWrapper extends Context {
 		return mBase.getExternalFilesDir(type);
 	}
 
-	@Override
+	@RequiresApi(KITKAT) @Override
 	public File[] getExternalFilesDirs(String type) {
 		return mBase.getExternalFilesDirs(type);
 	}
 
-	@Override
+	@RequiresApi(HONEYCOMB) @Override
 	public File getObbDir() {
 		return mBase.getObbDir();
 	}
 
-	@Override
+	@RequiresApi(KITKAT) @Override
 	public File[] getObbDirs() {
 		return mBase.getObbDirs();
 	}
@@ -214,7 +221,7 @@ class PseudoContextWrapper extends Context {
 		return mBase.getCacheDir();
 	}
 
-	@Override
+	@RequiresApi(LOLLIPOP) @Override
 	public File getCodeCacheDir() {
 		return mBase.getCodeCacheDir();
 	}
@@ -224,12 +231,12 @@ class PseudoContextWrapper extends Context {
 		return mBase.getExternalCacheDir();
 	}
 
-	@Override
+	@RequiresApi(KITKAT) @Override
 	public File[] getExternalCacheDirs() {
 		return mBase.getExternalCacheDirs();
 	}
 
-	@Override
+	@RequiresApi(LOLLIPOP) @Override
 	public File[] getExternalMediaDirs() {
 		return mBase.getExternalMediaDirs();
 	}
@@ -244,13 +251,13 @@ class PseudoContextWrapper extends Context {
 		return mBase.openOrCreateDatabase(name, mode, factory);
 	}
 
-	@Override
+	@RequiresApi(HONEYCOMB) @Override
 	public SQLiteDatabase openOrCreateDatabase(String name, int mode, SQLiteDatabase.CursorFactory factory,
 											   DatabaseErrorHandler errorHandler) {
 		return mBase.openOrCreateDatabase(name, mode, factory, errorHandler);
 	}
 
-	@Override
+	@RequiresApi(N) @Override
 	public boolean moveDatabaseFrom(Context sourceContext, String name) {
 		return mBase.moveDatabaseFrom(sourceContext, name);
 	}
@@ -317,17 +324,17 @@ class PseudoContextWrapper extends Context {
 		mBase.startActivity(intent);
 	}
 
-	@Override
+	@RequiresApi(JELLY_BEAN) @Override
 	public void startActivity(Intent intent, Bundle options) {
 		mBase.startActivity(intent, options);
 	}
 
-	@Override
+	@RequiresApi(HONEYCOMB) @Override
 	public void startActivities(Intent[] intents) {
 		mBase.startActivities(intents);
 	}
 
-	@Override
+	@RequiresApi(JELLY_BEAN) @Override
 	public void startActivities(Intent[] intents, Bundle options) {
 		mBase.startActivities(intents, options);
 	}
@@ -340,7 +347,7 @@ class PseudoContextWrapper extends Context {
 				flagsValues, extraFlags);
 	}
 
-	@Override
+	@RequiresApi(JELLY_BEAN) @Override
 	public void startIntentSender(IntentSender intent,
 								  Intent fillInIntent, int flagsMask, int flagsValues, int extraFlags,
 								  Bundle options) throws IntentSender.SendIntentException {
@@ -374,18 +381,18 @@ class PseudoContextWrapper extends Context {
 				initialData, initialExtras);
 	}
 
-	@Override
+	@RequiresApi(JELLY_BEAN_MR1) @Override
 	public void sendBroadcastAsUser(Intent intent, UserHandle user) {
 		mBase.sendBroadcastAsUser(intent, user);
 	}
 
-	@Override
+	@RequiresApi(JELLY_BEAN_MR1) @Override
 	public void sendBroadcastAsUser(Intent intent, UserHandle user,
 									String receiverPermission) {
 		mBase.sendBroadcastAsUser(intent, user, receiverPermission);
 	}
 
-	@Override
+	@RequiresApi(JELLY_BEAN_MR1) @Override
 	public void sendOrderedBroadcastAsUser(Intent intent, UserHandle user,
 										   String receiverPermission, BroadcastReceiver resultReceiver, Handler scheduler,
 										   int initialCode, String initialData, Bundle initialExtras) {
@@ -413,12 +420,12 @@ class PseudoContextWrapper extends Context {
 		mBase.removeStickyBroadcast(intent);
 	}
 
-	@Override
+	@RequiresApi(JELLY_BEAN_MR1) @Override
 	public void sendStickyBroadcastAsUser(Intent intent, UserHandle user) {
 		mBase.sendStickyBroadcastAsUser(intent, user);
 	}
 
-	@Override
+	@RequiresApi(JELLY_BEAN_MR1) @Override
 	public void sendStickyOrderedBroadcastAsUser(Intent intent,
 												 UserHandle user, BroadcastReceiver resultReceiver,
 												 Handler scheduler, int initialCode, String initialData,
@@ -427,7 +434,7 @@ class PseudoContextWrapper extends Context {
 				scheduler, initialCode, initialData, initialExtras);
 	}
 
-	@Override
+	@RequiresApi(JELLY_BEAN_MR1) @Override
 	@Deprecated
 	public void removeStickyBroadcastAsUser(Intent intent, UserHandle user) {
 		mBase.removeStickyBroadcastAsUser(intent, user);
@@ -484,7 +491,7 @@ class PseudoContextWrapper extends Context {
 		return mBase.getSystemService(name);
 	}
 
-	@Override
+	@RequiresApi(M) @Override
 	public String getSystemServiceName(Class<?> serviceClass) {
 		return mBase.getSystemServiceName(serviceClass);
 	}
@@ -504,7 +511,7 @@ class PseudoContextWrapper extends Context {
 		return mBase.checkCallingOrSelfPermission(permission);
 	}
 
-	@Override
+	@RequiresApi(M) @Override
 	public int checkSelfPermission(String permission) {
 		return mBase.checkSelfPermission(permission);
 	}
@@ -591,12 +598,12 @@ class PseudoContextWrapper extends Context {
 		return mBase.createPackageContext(packageName, flags);
 	}
 
-	@Override
+	@RequiresApi(JELLY_BEAN_MR1) @Override
 	public Context createConfigurationContext(Configuration overrideConfiguration) {
 		return mBase.createConfigurationContext(overrideConfiguration);
 	}
 
-	@Override
+	@RequiresApi(JELLY_BEAN_MR1) @Override
 	public Context createDisplayContext(Display display) {
 		return mBase.createDisplayContext(display);
 	}
@@ -606,12 +613,12 @@ class PseudoContextWrapper extends Context {
 		return mBase.isRestricted();
 	}
 
-	@Override
+	@RequiresApi(N) @Override
 	public Context createDeviceProtectedStorageContext() {
 		return mBase.createDeviceProtectedStorageContext();
 	}
 
-	@Override
+	@RequiresApi(N) @Override
 	public boolean isDeviceProtectedStorage() {
 		return mBase.isDeviceProtectedStorage();
 	}
