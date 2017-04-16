@@ -16,7 +16,7 @@ the overall device performance.
 1. Add dependency to this library in build.gradle of your project module.
 
    ```
-   compile 'com.oasisfeng.condom:library:1.0.1'
+   compile 'com.oasisfeng.condom:library:1.0.2'
    ```
 
 2. Migration the initialization code of 3rd-party SDK.
@@ -55,10 +55,15 @@ That's it! Enjoy the protection.
    对于Gradle工程，直接在模块的依赖项清单中添加下面这一行：
 
    ```
-   compile 'com.oasisfeng.condom:library:1.0.1'
+   compile 'com.oasisfeng.condom:library:1.0.2'
    ```
 
-   对于非Gradle工程，请[下载AAR文件](http://jcenter.bintray.com/com/oasisfeng/condom/library/)放进项目模块本地的 `libs` 路径中。
+   对于非Gradle工程，请[下载AAR文件](http://jcenter.bintray.com/com/oasisfeng/condom/library/)放进项目模块本地的 `libs` 路径中，并在工程的ProGuard配置文件中增加以下两行：（Gradle工程和不使用ProGuard的工程不需要这一步）
+
+   ```
+   -dontwarn android.content.IContentProvider
+   -dontwarn android.content.ContentResolver
+   ```
 
 2. 略微修改三方SDK的初始化代码。
 
