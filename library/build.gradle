@@ -24,9 +24,20 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            //proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+}
+
+android.libraryVariants.all { variant ->
+    String taskName = String.format("remove%sStubClasses", variant.name.capitalize())
+    task "${taskName}" << {
+        String path = "${buildDir}/intermediates/classes/${variant.name}"
+        file(path + "/android/content/ContentResolver.class").delete()
+        file(path + "/android/content/IContentProvider.class").delete()
+        file(path + "/android/content").delete()
+        file(path + "/android").delete()
+    }
+    variant.processJavaResources.dependsOn(taskName)
 }
 
 dependencies {
