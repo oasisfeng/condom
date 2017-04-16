@@ -1,0 +1,2 @@
+-dontwarn android.content.IContentProvider
+-dontwarn android.content.ContentResolver
