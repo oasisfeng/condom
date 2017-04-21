@@ -24,11 +24,14 @@ import android.support.test.InstrumentationRegistry;
 
 import org.junit.Test;
 
+import javax.annotation.ParametersAreNonnullByDefault;
+
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertNotSame;
 import static junit.framework.Assert.assertTrue;
 
+@ParametersAreNonnullByDefault
 public class CondomContextBasicSemanticTest {
 
 	@Test public void testApplicationAsApplicationContextOfBaseContext() throws Exception {

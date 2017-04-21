@@ -52,64 +52,64 @@ import static junit.framework.Assert.assertTrue;
 public class MiscTest {
 
 	@Test public void testEventLog() throws IOException {
-		readNewEvents(CondomContext.CondomEvent.CONCERN);
+		readNewEvents(CondomCore.CondomEvent.CONCERN);
 
 		condom.getBaseContext();
-		Object[] data = readLastEvent(CondomContext.CondomEvent.CONCERN);
+		Object[] data = readLastEvent(CondomCore.CondomEvent.CONCERN);
 		assertEquals("getBaseContext", data[0]);
 		assertCallerMatch(data);
 
 		((Application) condom.getApplicationContext()).getBaseContext();
-		data = readLastEvent(CondomContext.CondomEvent.CONCERN);
+		data = readLastEvent(CondomCore.CondomEvent.CONCERN);
 		assertEquals("Application.getBaseContext", data[0]);
 		assertCallerMatch(data);
 
 		condom.getPackageManager().getInstalledApplications(0);
-		data = readLastEvent(CondomContext.CondomEvent.CONCERN);
+		data = readLastEvent(CondomCore.CondomEvent.CONCERN);
 		assertEquals("PackageManager.getInstalledApplications", data[0]);
 		assertCallerMatch(data);
 
 		condom.getPackageManager().getInstalledPackages(0);
-		data = readLastEvent(CondomContext.CondomEvent.CONCERN);
+		data = readLastEvent(CondomCore.CondomEvent.CONCERN);
 		assertEquals("PackageManager.getInstalledPackages", data[0]);
 		assertCallerMatch(data);
 
 		final Intent intent = new Intent().setPackage("a.b.c");
 		condom.bindService(intent, SERVICE_CONNECTION, 0);
-		data = readLastEvent(CondomContext.CondomEvent.BIND_PASS);
+		data = readLastEvent(CondomCore.CondomEvent.BIND_PASS);
 		assertEquals(condom.getPackageName(), data[0]);
-		assertEquals(TAG, data[1]);
+		assertEquals("Condom." + TAG, data[1]);
 		assertEquals(intent.getPackage(), data[2]);
 		assertEquals(intent.toString(), data[3]);
 
 		condom.startService(intent);
-		data = readLastEvent(CondomContext.CondomEvent.START_PASS);
+		data = readLastEvent(CondomCore.CondomEvent.START_PASS);
 		assertEquals(condom.getPackageName(), data[0]);
-		assertEquals(TAG, data[1]);
+		assertEquals("Condom." + TAG, data[1]);
 		assertEquals(intent.getPackage(), data[2]);
 		assertEquals(intent.toString(), data[3]);
 
 		final List<ResolveInfo> result = condom.getPackageManager().queryIntentServices(intent.setPackage(null).setComponent(null), 0);
 		assertEquals(1, result.size());		// 1 left: non.bg.service
-		final List<EventLog.Event> events = readNewEvents(CondomContext.CondomEvent.FILTER_BG_SERVICE);
+		final List<EventLog.Event> events = readNewEvents(CondomCore.CondomEvent.FILTER_BG_SERVICE);
 		assertEquals(2, events.size());		// 2 filtered: bg.service.*
 		data = (Object[]) events.get(0).getData();
 		assertEquals(condom.getPackageName(), data[0]);
-		assertEquals(TAG, data[1]);
+		assertEquals("Condom." + TAG, data[1]);
 		assertEquals("bg.service.1", data[2]);
 		final String expected_intent = new Intent(intent).addFlags(SDK_INT >= HONEYCOMB_MR1 ? Intent.FLAG_EXCLUDE_STOPPED_PACKAGES : 0).toString();	// Flags altered
 		assertEquals(expected_intent, data[3]);
 		data = (Object[]) events.get(1).getData();
 		assertEquals(condom.getPackageName(), data[0]);
-		assertEquals(TAG, data[1]);
+		assertEquals("Condom." + TAG, data[1]);
 		assertEquals("bg.service.2", data[2]);
 		assertEquals(expected_intent, data[3]);
 
 		final ResolveInfo resolve = condom.getPackageManager().resolveService(intent, 0);
 		assertEquals("non.bg.service", resolve.serviceInfo.applicationInfo.packageName);
-		data = readLastEvent(CondomContext.CondomEvent.FILTER_BG_SERVICE);
+		data = readLastEvent(CondomCore.CondomEvent.FILTER_BG_SERVICE);
 		assertEquals(condom.getPackageName(), data[0]);
-		assertEquals(TAG, data[1]);
+		assertEquals("Condom." + TAG, data[1]);
 		assertEquals("bg.service.1", data[2]);
 		assertEquals(expected_intent, data[3]);
 
@@ -123,16 +123,16 @@ public class MiscTest {
 		final ComponentName component = new ComponentName("x.y.z", "O");
 		intent.setPackage(null).setComponent(component);
 		condom_wo_tag.bindService(intent, SERVICE_CONNECTION, 0);
-		data = readLastEvent(CondomContext.CondomEvent.BIND_PASS);
+		data = readLastEvent(CondomCore.CondomEvent.BIND_PASS);
 		assertEquals(condom_wo_tag.getPackageName(), data[0]);
-		assertEquals("", data[1]);
+		assertEquals("Condom", data[1]);
 		assertEquals(intent.getComponent().getPackageName(), data[2]);
 		assertEquals(intent.toString(), data[3]);
 
 		condom_wo_tag.startService(intent);
-		data = readLastEvent(CondomContext.CondomEvent.START_PASS);
+		data = readLastEvent(CondomCore.CondomEvent.START_PASS);
 		assertEquals(condom_wo_tag.getPackageName(), data[0]);
-		assertEquals("", data[1]);
+		assertEquals("Condom", data[1]);
 		assertEquals(intent.getComponent().getPackageName(), data[2]);
 		assertEquals(intent.toString(), data[3]);
 	}
@@ -142,13 +142,13 @@ public class MiscTest {
 		assertTrue(string, string.startsWith(MiscTest.class.getName() + ".testEventLog:"));
 	}
 
-	private static Object[] readLastEvent(final CondomContext.CondomEvent type) throws IOException {
+	private static Object[] readLastEvent(final CondomCore.CondomEvent type) throws IOException {
 		final List<EventLog.Event> events = readNewEvents(type);
 		assertEquals(1, events.size());
 		return (Object[]) events.get(0).getData();
 	}
 
-	private static List<EventLog.Event> readNewEvents(final CondomContext.CondomEvent type) throws IOException {
+	private static List<EventLog.Event> readNewEvents(final CondomCore.CondomEvent type) throws IOException {
 		final List<EventLog.Event> events = new ArrayList<>();
 		EventLog.readEvents(new int[] { "Condom".hashCode() + type.ordinal() }, events);
 		if (events.isEmpty()) return Collections.emptyList();

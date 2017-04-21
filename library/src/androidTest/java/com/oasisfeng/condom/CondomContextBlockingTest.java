@@ -60,7 +60,7 @@ import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.assertTrue;
 import static junit.framework.Assert.fail;
 
-@SuppressWarnings("deprecation") @ParametersAreNonnullByDefault
+@ParametersAreNonnullByDefault
 public class CondomContextBlockingTest {
 
 	@Test public void testDelegationAndExclusionFlagsIncludingDryRun() {
@@ -101,7 +101,7 @@ public class CondomContextBlockingTest {
 
 		// Prevent broadcast to background packages
 		condom.preventBroadcastToBackgroundPackages(true)  .preventServiceInBackgroundPackages(false).preventWakingUpStoppedPackages(false);
-		expected_receiver_flags.set(SDK_INT >= N ? CondomContext.FLAG_RECEIVER_EXCLUDE_BACKGROUND : Intent.FLAG_RECEIVER_REGISTERED_ONLY);
+		expected_receiver_flags.set(SDK_INT >= N ? CondomCore.FLAG_RECEIVER_EXCLUDE_BACKGROUND : Intent.FLAG_RECEIVER_REGISTERED_ONLY);
 		with(ALL_SORT_OF_INTENTS, EXPECT_BASE_CALLED, allBroadcastApis(condom));
 		expected_receiver_flags.set(0);
 
@@ -119,7 +119,7 @@ public class CondomContextBlockingTest {
 		condom.preventWakingUpStoppedPackages(true).preventBroadcastToBackgroundPackages(true).preventServiceInBackgroundPackages(false);
 		expected_flags_added.set(FLAG_EXCLUDE_STOPPED_PACKAGES);
 		unexpected_flags.set(FLAG_INCLUDE_STOPPED_PACKAGES);
-		expected_receiver_flags.set(SDK_INT >= N ? CondomContext.FLAG_RECEIVER_EXCLUDE_BACKGROUND : Intent.FLAG_RECEIVER_REGISTERED_ONLY);
+		expected_receiver_flags.set(SDK_INT >= N ? CondomCore.FLAG_RECEIVER_EXCLUDE_BACKGROUND : Intent.FLAG_RECEIVER_REGISTERED_ONLY);
 		with(intents_with_inc_stop, EXPECT_BASE_CALLED, allBroadcastApis(condom));
 		with(intents_with_inc_stop, EXPECT_BASE_CALLED, allServiceApis(condom));
 	}
@@ -148,7 +148,7 @@ public class CondomContextBlockingTest {
 		final CondomContext condom = CondomContext.wrap(context, TAG);
 
 		// Outbound judge
-		condom.setOutboundJudge(new CondomContext.OutboundJudge() { @Override public boolean shouldAllow(final CondomContext.OutboundType type, final String target_pkg) {
+		condom.setOutboundJudge(new OutboundJudge() { @Override public boolean shouldAllow(final OutboundType type, final String target_pkg) {
 			final String settings_pkg = InstrumentationRegistry.getTargetContext().getPackageManager().resolveContentProvider(Settings.System.CONTENT_URI.getAuthority(), 0).packageName;
 			return ! settings_pkg.equals(target_pkg);
 		}});
@@ -186,8 +186,8 @@ public class CondomContextBlockingTest {
 
 	@Test public void testOutboundJudgeIncludingDryRun() {
 		final TestContext context = new TestContext();
-		final CondomContext condom = CondomContext.wrap(context, TAG).setOutboundJudge(new CondomContext.OutboundJudge() {
-			@Override public boolean shouldAllow(final CondomContext.OutboundType type, final String target_pkg) {
+		final CondomContext condom = CondomContext.wrap(context, TAG).setOutboundJudge(new OutboundJudge() {
+			@Override public boolean shouldAllow(final OutboundType type, final String target_pkg) {
 				mNumOutboundJudgeCalled.incrementAndGet();
 				return ! DISALLOWED_PACKAGE.equals(target_pkg);
 			}
