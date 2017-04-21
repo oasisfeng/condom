@@ -36,7 +36,6 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 
 import static android.os.Build.VERSION.SDK_INT;
@@ -150,25 +149,18 @@ public class MiscTest {
 
 	private static List<EventLog.Event> readNewEvents(final CondomCore.CondomEvent type) throws IOException {
 		final List<EventLog.Event> events = new ArrayList<>();
-		EventLog.readEvents(new int[] { "Condom".hashCode() + type.ordinal() }, events);
+		EventLog.readEvents(new int[] { EVENT_TAG_MARK, "Condom".hashCode() + type.ordinal() }, events);
 		if (events.isEmpty()) return Collections.emptyList();
-		final EventLog.Event last = events.get(events.size() - 1);
-		if (mLastEventTime == 0) {
-			mLastEventTime = last.getTimeNanos();
-			return events;
+		for (int i = events.size() - 1; i >= 0; i --) {
+			final EventLog.Event event = events.get(i);
+			if (event.getTag() == EVENT_TAG_MARK) {
+				EventLog.writeEvent(EVENT_TAG_MARK);
+				return events.subList(i + 1, events.size());
+			}
 		}
-		final Iterator<EventLog.Event> iterator = events.iterator();
-		while (iterator.hasNext()) {
-			final EventLog.Event event = iterator.next();
-			if (event.getTimeNanos() > mLastEventTime) {
-				mLastEventTime = events.get(events.size() - 1).getTimeNanos();	// Advance to the latest one, since they all are returned.
-				break;
-			} else iterator.remove();
-		}
+		EventLog.writeEvent(EVENT_TAG_MARK);
 		return events;
 	}
-
-	private static long mLastEventTime;
 
 	private static final ServiceConnection SERVICE_CONNECTION = new ServiceConnection() {
 		@Override public void onServiceConnected(final ComponentName name, final IBinder service) {}
@@ -211,5 +203,6 @@ public class MiscTest {
 		}
 	}, TAG);
 
+	private static final int EVENT_TAG_MARK = "Condom".hashCode() + 999;
 	private static final String TAG = "Test";
 }
