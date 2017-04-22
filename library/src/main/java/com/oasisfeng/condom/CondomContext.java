@@ -275,7 +275,7 @@ public class CondomContext extends ContextWrapper {
 
 		@Override public ProviderInfo resolveContentProvider(final String name, final int flags) {
 			final ProviderInfo provider = super.resolveContentProvider(name, flags);
-			if (! mCondom.shouldAllowProvider(provider)) return null;
+			if (! mCondom.shouldAllowProvider(provider) && ! mCondom.mDryRun) return null;
 			return provider;
 		}
 
