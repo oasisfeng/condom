@@ -253,7 +253,7 @@ public class CondomContext extends ContextWrapper {
 					if (app_info.uid == my_uid) continue;
 					if (bg_uid_filter == null) bg_uid_filter = mCondom.new BackgroundUidFilter();
 					if (! bg_uid_filter.isUidNotBackground(app_info.uid)) {
-						result_iterator.remove();
+						if (! mCondom.mDryRun) result_iterator.remove();
 						mCondom.log(TAG, CondomCore.CondomEvent.FILTER_BG_SERVICE, app_info.packageName, intent.toString());
 					}
 				}
@@ -267,7 +267,9 @@ public class CondomContext extends ContextWrapper {
 				if (! mCondom.mExcludeBackgroundServices) return CondomPackageManager.super.resolveService(intent, flags);
 
 				final List<ResolveInfo> candidates = CondomPackageManager.super.queryIntentServices(intent, flags);
-				return mCondom.getFirstNonBackground(intent, candidates, TAG);
+				final ResolveInfo resolve = mCondom.getFirstNonBackground(intent, candidates, TAG);
+				if (mCondom.mDryRun) return candidates == null || candidates.isEmpty() ? null : candidates.get(0);
+				return resolve;
 			}});
 		}
 
@@ -293,12 +295,12 @@ public class CondomContext extends ContextWrapper {
 	private class CondomContentResolver extends ContentResolverWrapper {
 
 		@Override public IContentProvider acquireUnstableProvider(final Context c, final String name) {
-			if (! shouldAllowProvider(c, name)) return null;
+			if (! shouldAllowProvider(c, name) && ! mCondom.mDryRun) return null;
 			return super.acquireUnstableProvider(c, name);
 		}
 
 		@Override public IContentProvider acquireProvider(final Context c, final String name) {
-			if (! shouldAllowProvider(c, name)) return null;
+			if (! shouldAllowProvider(c, name) && ! mCondom.mDryRun) return null;
 			return super.acquireProvider(c, name);
 		}
 
