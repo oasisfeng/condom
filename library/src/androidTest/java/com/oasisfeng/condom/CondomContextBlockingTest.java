@@ -44,11 +44,11 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
+import static android.content.Intent.FLAG_RECEIVER_REGISTERED_ONLY;
 import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.HONEYCOMB_MR1;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR1;
@@ -63,113 +63,105 @@ import static junit.framework.Assert.fail;
 @ParametersAreNonnullByDefault
 public class CondomContextBlockingTest {
 
-	@Test public void testDelegationAndExclusionFlagsIncludingDryRun() {
-		final AtomicInteger expected_flags_added = new AtomicInteger(), expected_receiver_flags = new AtomicInteger(), unexpected_flags = new AtomicInteger();
-		final TestContext context = new TestContext() {
-			protected void check(final Intent intent, final boolean broadcast) {
-				super.check(intent, broadcast);
-				final int all_flags = expected_flags_added.get() | expected_receiver_flags.get() | unexpected_flags.get();
-				assertEquals(INTENT_FLAGS, intent.getFlags() & ~ all_flags);        // Assert original flags intact
-				assertEquals(expected_flags_added.get() | (broadcast ? expected_receiver_flags.get() : 0), (intent.getFlags() & all_flags));
-			}
-		};
-		final Runnable EXPECT_BASE_CALLED = new Runnable() { @Override public void run() { context.assertBaseCalled(); } };
-
-		// Dry-run test
-		CondomContext condom = CondomContext.wrap(context, TAG, new CondomOptions().setDryRun(true));
-		expected_flags_added.set(0);		// Flags should be intact
-		with(ALL_SORT_OF_INTENTS, EXPECT_BASE_CALLED, allBroadcastApis(condom));
-		with(ALL_SORT_OF_INTENTS, EXPECT_BASE_CALLED, allServiceApis(condom));
-		condom = CondomContext.wrap(context, TAG, new CondomOptions());
+	@Test public void testSelfTargeted() {
+		final TestContext context = new TestContext();
+		final CondomContext condom = CondomContext.wrap(context, TAG), dry_condom = CondomContext.wrap(context, TAG, new CondomOptions().setDryRun(true));
 
 		// Self-targeting test
-		expected_flags_added.set(0);		// Flags should be intact
 		final String self_pkg = condom.getPackageName();
 		final Intent[] self_targeted_intents = new Intent[] {
 				intent().setPackage(self_pkg),
 				intent().setComponent(new ComponentName(self_pkg, "X"))
 		};
-		with(self_targeted_intents, EXPECT_BASE_CALLED, allBroadcastApis(condom));
-		with(self_targeted_intents, EXPECT_BASE_CALLED, allServiceApis(condom));
+		with(self_targeted_intents, allBroadcastApis(condom), context.EXPECT_BASE_CALLED, context.expectFlags(0));
+		with(self_targeted_intents, allServiceApis(condom), context.EXPECT_BASE_CALLED, context.expectFlags(0));
+		with(self_targeted_intents, allBroadcastApis(dry_condom), context.EXPECT_BASE_CALLED, context.expectFlags(0));
+		with(self_targeted_intents, allServiceApis(dry_condom), context.EXPECT_BASE_CALLED, context.expectFlags(0));
+	}
 
-		// Allow all (prevent none)
-		condom = CondomContext.wrap(context, TAG, new CondomOptions().preventBroadcastToBackgroundPackages(false));
+	@Test public void testPreventNone() {
+		final TestContext context = new TestContext();
+		final CondomOptions options = new CondomOptions().preventServiceInBackgroundPackages(false).preventBroadcastToBackgroundPackages(false);
+		final CondomContext condom = CondomContext.wrap(context, TAG, options), dry_condom = CondomContext.wrap(context, TAG, options.setDryRun(true));
 		//noinspection deprecation, intentional test for deprecated method
 		condom.preventWakingUpStoppedPackages(false);
-		expected_flags_added.set(0);		// Flags should be intact
-		with(ALL_SORT_OF_INTENTS, EXPECT_BASE_CALLED, allBroadcastApis(condom));
-		with(ALL_SORT_OF_INTENTS, EXPECT_BASE_CALLED, allServiceApis(condom));
+		//noinspection deprecation
+		dry_condom.preventWakingUpStoppedPackages(false);
 
-		// Prevent waking-up stopped packages.
-		condom = CondomContext.wrap(context, TAG, new CondomOptions().preventBroadcastToBackgroundPackages(false));
-		expected_flags_added.set(FLAG_EXCLUDE_STOPPED_PACKAGES);
-		unexpected_flags.set(FLAG_INCLUDE_STOPPED_PACKAGES);
+		with(ALL_SORT_OF_INTENTS, allBroadcastApis(condom), context.EXPECT_BASE_CALLED, context.expectFlags(0));
+		with(ALL_SORT_OF_INTENTS, allServiceApis(condom), context.EXPECT_BASE_CALLED, context.expectFlags(0));
+		with(ALL_SORT_OF_INTENTS, allBroadcastApis(dry_condom), context.EXPECT_BASE_CALLED, context.expectFlags(0));
+		with(ALL_SORT_OF_INTENTS, allServiceApis(dry_condom), context.EXPECT_BASE_CALLED, context.expectFlags(0));
+	}
+
+	@Test public void testPreventWakingUpStoppedPackages_IncludingDryRun() {
 		final Intent[] intents_with_inc_stop = ALL_SORT_OF_INTENTS.clone();
 		for (int i = 0; i < intents_with_inc_stop.length; i++)
 			intents_with_inc_stop[i] = new Intent(intents_with_inc_stop[i]).addFlags(FLAG_INCLUDE_STOPPED_PACKAGES);
-		with(intents_with_inc_stop, EXPECT_BASE_CALLED, allBroadcastApis(condom));
-		with(intents_with_inc_stop, EXPECT_BASE_CALLED, allServiceApis(condom));
-
-		// Prevent broadcast to background packages
-		condom = CondomContext.wrap(context, TAG, new CondomOptions().preventBroadcastToBackgroundPackages(true));
-		expected_receiver_flags.set(SDK_INT >= N ? CondomCore.FLAG_RECEIVER_EXCLUDE_BACKGROUND : Intent.FLAG_RECEIVER_REGISTERED_ONLY);
-		with(ALL_SORT_OF_INTENTS, EXPECT_BASE_CALLED, allBroadcastApis(condom));
-		expected_receiver_flags.set(0);
-
-		// Normal test
-		condom = CondomContext.wrap(context, TAG, new CondomOptions().preventBroadcastToBackgroundPackages(true));
-		expected_receiver_flags.set(SDK_INT >= N ? CondomCore.FLAG_RECEIVER_EXCLUDE_BACKGROUND : Intent.FLAG_RECEIVER_REGISTERED_ONLY);
-		with(intents_with_inc_stop, EXPECT_BASE_CALLED, allBroadcastApis(condom));
-		with(intents_with_inc_stop, EXPECT_BASE_CALLED, allServiceApis(condom));
+		final TestContext context = new TestContext();
+		final CondomOptions options = new CondomOptions().preventBroadcastToBackgroundPackages(false).preventServiceInBackgroundPackages(false);
+		final CondomContext condom = CondomContext.wrap(context, TAG, options), dry_condom = CondomContext.wrap(context, TAG, options.setDryRun(true));
+		with(intents_with_inc_stop, allBroadcastApis(condom), context.EXPECT_BASE_CALLED, context.expectFlags(FLAG_EXCLUDE_STOPPED_PACKAGES));
+		with(intents_with_inc_stop, allServiceApis(condom), context.EXPECT_BASE_CALLED, context.expectFlags(FLAG_EXCLUDE_STOPPED_PACKAGES));
+		with(intents_with_inc_stop, allBroadcastApis(dry_condom), context.EXPECT_BASE_CALLED, context.expectFlags(FLAG_INCLUDE_STOPPED_PACKAGES));
+		with(intents_with_inc_stop, allServiceApis(dry_condom), context.EXPECT_BASE_CALLED, context.expectFlags(FLAG_INCLUDE_STOPPED_PACKAGES));
 	}
 
-	@Test public void testPreventServiceInBackgroundPackagesIncludingDryRun() {
+	@Test public void testPreventBroadcastToBackgroundPackages() {
+		final TestContext context = new TestContext();
+		final CondomOptions options = new CondomOptions().preventBroadcastToBackgroundPackages(true);
+		final CondomContext condom = CondomContext.wrap(context, TAG, options), dry_condom = CondomContext.wrap(context, TAG, options.setDryRun(true));
+		final int extra_flag = SDK_INT >= N ? CondomCore.FLAG_RECEIVER_EXCLUDE_BACKGROUND : FLAG_RECEIVER_REGISTERED_ONLY;
+		with(ALL_SORT_OF_INTENTS, allBroadcastApis(condom), context.EXPECT_BASE_CALLED, context.expectFlags(FLAG_EXCLUDE_STOPPED_PACKAGES | extra_flag));
+		with(ALL_SORT_OF_INTENTS, allBroadcastApis(dry_condom), context.EXPECT_BASE_CALLED, context.expectFlags(0));
+	}
+
+	@Test public void testPreventServiceInBackgroundPackages() {
 		final TestContext context = new TestContext();
 		context.mTestingBackgroundUid = true;
-		// Prevent service in background packages
-		CondomContext condom = CondomContext.wrap(context, TAG, new CondomOptions().preventServiceInBackgroundPackages(true));
-		PackageManager pm = condom.getPackageManager();
-		assertEquals(3, pm.queryIntentServices(intent(), 0).size());
+		final CondomOptions options = new CondomOptions().preventServiceInBackgroundPackages(true).preventBroadcastToBackgroundPackages(false);
+		final CondomContext condom = CondomContext.wrap(context, TAG, options), dry_condom = CondomContext.wrap(context, TAG, options.setDryRun(true));
+		assertEquals(3, condom.getPackageManager().queryIntentServices(intent(), 0).size());
 		context.assertBaseCalled();
-		assertEquals("non.bg.service", pm.resolveService(intent(), 0).serviceInfo.packageName);
+		assertEquals(4, dry_condom.getPackageManager().queryIntentServices(intent(), 0).size());
 		context.assertBaseCalled();
-
-		condom = CondomContext.wrap(context, TAG, new CondomOptions().preventServiceInBackgroundPackages(false));
-		pm = condom.getPackageManager();
-		assertEquals(4, condom.getPackageManager().queryIntentServices(intent(), 0).size());
+		assertEquals("non.bg.service", condom.getPackageManager().resolveService(intent(), 0).serviceInfo.packageName);
 		context.assertBaseCalled();
-		assertEquals(7777777, pm.resolveService(intent(), 0).serviceInfo.applicationInfo.uid);
-		context.assertBaseCalled();
-
-		// Dry-run
-		condom = CondomContext.wrap(context, TAG, new CondomOptions().preventServiceInBackgroundPackages(true).setDryRun(true));
-		pm = condom.getPackageManager();
-		assertEquals(4, condom.getPackageManager().queryIntentServices(intent(), 0).size());
-		context.assertBaseCalled();
-		assertEquals(7777777, pm.resolveService(intent(), 0).serviceInfo.applicationInfo.uid);
+		assertEquals(7777777, dry_condom.getPackageManager().resolveService(intent(), 0).serviceInfo.applicationInfo.uid);
 		context.assertBaseCalled();
 	}
 
-	@Test public void testContentProviderIncludingDryRun() {
+	@Test public void testContentProviderOutboundJudge() {
 		final TestContext context = new TestContext();
-		// Outbound judge
-		CondomContext condom = CondomContext.wrap(context, TAG, new CondomOptions().setOutboundJudge(new OutboundJudge() { @Override public boolean shouldAllow(final OutboundType type, final String target_pkg) {
+		final CondomOptions options = new CondomOptions().setOutboundJudge(new OutboundJudge() { @Override public boolean shouldAllow(final OutboundType type, final String target_pkg) {
 			final String settings_pkg = InstrumentationRegistry.getTargetContext().getPackageManager().resolveContentProvider(Settings.System.CONTENT_URI.getAuthority(), 0).packageName;
 			return ! settings_pkg.equals(target_pkg);
-		}}));
+		}});
+		final CondomContext condom = CondomContext.wrap(context, TAG, options), dry_condom = CondomContext.wrap(context, TAG, options.setDryRun(true));
+
 		assertNull(condom.getPackageManager().resolveContentProvider(Settings.AUTHORITY, 0));
+		assertNotNull(dry_condom.getPackageManager().resolveContentProvider(Settings.AUTHORITY, 0));
 		try {
 			condom.getContentResolver().call(Settings.System.CONTENT_URI, "test", null, null);
 			fail("Provider not blocked by outbound judge.");
 		} catch (final IllegalArgumentException ignored) {}
-		//noinspection ConstantConditions
-		condom = CondomContext.wrap(context, TAG);
+		try {
+			dry_condom.getContentResolver().call(Settings.System.CONTENT_URI, "test", null, null);
+			fail("Dry-run is not working.");
+		} catch (final SecurityException ignored) {}    // Expected: SecurityException: Permission denial: writing to settings requires android.permission.WRITE_SETTINGS
+	}
+
+	@Test public void testContentProvider() {
+		final TestContext context = new TestContext();
+		final CondomContext condom = CondomContext.wrap(context, TAG), dry_condom = CondomContext.wrap(context, TAG, new CondomOptions().setDryRun(true));
 
 		// Regular provider access
-		final String expected_android_id = Settings.System.getString(context.getContentResolver(), Settings.System.ANDROID_ID);
-		assertNotNull(expected_android_id);
-		String actual_android_id = Settings.System.getString(condom.getContentResolver(), Settings.System.ANDROID_ID);
-		assertEquals(expected_android_id, actual_android_id);
+		final String android_id = Settings.System.getString(context.getContentResolver(), Settings.System.ANDROID_ID);
+		assertNotNull(android_id);
+		final String condom_android_id = Settings.System.getString(condom.getContentResolver(), Settings.System.ANDROID_ID);
+		assertEquals(android_id, condom_android_id);
+		final String dry_android_id = Settings.System.getString(dry_condom.getContentResolver(), Settings.System.ANDROID_ID);
+		assertEquals(android_id, dry_android_id);
 
 		// Prevent stopped package
 		context.mTestingStoppedProvider = true;
@@ -178,32 +170,14 @@ public class CondomContextBlockingTest {
 			condom.getContentResolver().call(Settings.System.CONTENT_URI, "test", null, null);
 			fail("Stopped provider not blocked.");
 		} catch (final IllegalArgumentException ignored) {}
-		context.mTestingStoppedProvider = false;
-
-		// Dry-run
-		context.mTestingStoppedProvider = true;
-		condom = CondomContext.wrap(context, TAG, new CondomOptions().setDryRun(true).setOutboundJudge(new OutboundJudge() { @Override public boolean shouldAllow(final OutboundType type, final String target_pkg) {
-			final String settings_pkg = InstrumentationRegistry.getTargetContext().getPackageManager().resolveContentProvider(Settings.System.CONTENT_URI.getAuthority(), 0).packageName;
-			return ! settings_pkg.equals(target_pkg);
-		}}));
-		actual_android_id = Settings.System.getString(condom.getContentResolver(), Settings.System.ANDROID_ID);
-		assertEquals(expected_android_id, actual_android_id);
 		try {
-			condom.getContentResolver().call(Settings.System.CONTENT_URI, "test", null, null);
+			dry_condom.getContentResolver().call(Settings.System.CONTENT_URI, "test", null, null);
 			fail("Dry-run is not working.");
-		} catch (final SecurityException ignored) {}	// Expected: SecurityException: Permission denial: writing to settings requires android.permission.WRITE_SETTINGS
+		} catch (final SecurityException ignored) {}    // Expected: SecurityException: Permission denial: writing to settings requires android.permission.WRITE_SETTINGS
 		context.mTestingStoppedProvider = false;
 	}
 
-	@SafeVarargs private static void with(final Intent[] intents, final Runnable expectation, final Consumer<Intent>... tests) {
-		for (final Intent intent : intents)
-			for (final Consumer<Intent> test : tests) {
-				test.accept(intent);
-				expectation.run();
-			}
-	}
-
-	@Test public void testOutboundJudgeIncludingDryRun() {
+	@Test public void testOutboundJudge() {
 		final TestContext context = new TestContext();
 		final CondomOptions options = new CondomOptions().setOutboundJudge(new OutboundJudge() {
 			@Override public boolean shouldAllow(final OutboundType type, final String target_pkg) {
@@ -211,43 +185,57 @@ public class CondomContextBlockingTest {
 				return ! DISALLOWED_PACKAGE.equals(target_pkg);
 			}
 		});
-		CondomContext condom = CondomContext.wrap(context, TAG, options);
-		final PackageManager pm = condom.getPackageManager();
+		final CondomContext condom = CondomContext.wrap(context, TAG, options), dry_condom = CondomContext.wrap(context, TAG, options.setDryRun(true));
+		final PackageManager pm = condom.getPackageManager(), dry_pm = dry_condom.getPackageManager();
 
 		final Runnable EXPECT_OUTBOUND_JUDGE_REFUSAL = new Runnable() { @Override public void run() {
 			context.assertBaseNotCalled();
 			assertOutboundJudgeCalled(1);
 		}};
-		with(DISALLOWED_INTENTS, EXPECT_OUTBOUND_JUDGE_REFUSAL, allBroadcastApis(condom));
+		final Runnable EXPECT_OUTBOUND_JUDGE_PASS = new Runnable() { @Override public void run() {
+			context.assertBaseCalled();
+			assertOutboundJudgeCalled(1);
+		}};
+		with(DISALLOWED_INTENTS, allBroadcastApis(condom), EXPECT_OUTBOUND_JUDGE_REFUSAL);
+		with(ALLOWED_INTENTS, allBroadcastApis(condom), EXPECT_OUTBOUND_JUDGE_PASS);
+		with(DISALLOWED_INTENTS, allBroadcastApis(dry_condom), EXPECT_OUTBOUND_JUDGE_PASS);
+		with(ALLOWED_INTENTS, allBroadcastApis(dry_condom), EXPECT_OUTBOUND_JUDGE_PASS);
 
 		assertNull(pm.resolveService(intent().setPackage(DISALLOWED_PACKAGE), 0));
 		context.assertBaseNotCalled();
 		assertOutboundJudgeCalled(1);
+		assertNotNull(dry_pm.resolveService(intent().setPackage(DISALLOWED_PACKAGE), 0));
+		context.assertBaseCalled();
+		assertOutboundJudgeCalled(1);
 
 		assertEquals(1, pm.queryIntentServices(intent(), 0).size());
+		context.assertBaseCalled();
+		assertOutboundJudgeCalled(2);
+		assertEquals(2, dry_pm.queryIntentServices(intent(), 0).size());
 		context.assertBaseCalled();
 		assertOutboundJudgeCalled(2);
 
 		assertEquals(1, pm.queryBroadcastReceivers(intent(), 0).size());
 		context.assertBaseCalled();
 		assertOutboundJudgeCalled(2);
+		assertEquals(2, dry_pm.queryBroadcastReceivers(intent(), 0).size());
+		context.assertBaseCalled();
+		assertOutboundJudgeCalled(2);
 
-		final Runnable EXPECT_OUTBOUND_JUDGE_PASS = new Runnable() { @Override public void run() {
-			context.assertBaseCalled();
-			assertOutboundJudgeCalled(1);
-		}};
-		with(ALLOWED_INTENTS, EXPECT_OUTBOUND_JUDGE_PASS, allBroadcastApis(condom));
 		condom.sendBroadcast(intent());
 		context.assertBaseCalled();
 		assertOutboundJudgeCalled(0);
-
-		// Dry-run test
-		condom = CondomContext.wrap(context, TAG, options.setDryRun(true));
-		with(DISALLOWED_INTENTS, EXPECT_OUTBOUND_JUDGE_PASS, allBroadcastApis(condom));
-		with(ALLOWED_INTENTS, EXPECT_OUTBOUND_JUDGE_PASS, allBroadcastApis(condom));
-		condom.sendBroadcast(intent());
+		dry_condom.sendBroadcast(intent());
 		context.assertBaseCalled();
 		assertOutboundJudgeCalled(0);
+	}
+
+	private static void with(final Intent[] intents, final Consumer<Intent>[] tests, final Runnable... expectations) {
+		for (final Intent intent : intents)
+			for (final Consumer<Intent> test : tests) {
+				test.accept(intent);
+				for (final Runnable expectation : expectations) expectation.run();
+			}
 	}
 
 	private static Intent intent() { return new Intent("com.example.TEST").addFlags(INTENT_FLAGS); }
@@ -321,32 +309,37 @@ public class CondomContextBlockingTest {
 
 
 	private class TestContext extends ContextWrapper {
-		@CallSuper void check(final Intent intent, final boolean broadcast) { assertBaseNotCalled(); mBaseCalled.set(true); }
 
-		@Override public ComponentName startService(final Intent intent) { check(intent, false); return null; }
-		@Override public boolean bindService(final Intent intent, final ServiceConnection c, final int f) { check(intent, false); return false; }
-		@Override public void sendBroadcast(final Intent intent) { check(intent, true); }
-		@Override public void sendBroadcast(final Intent intent, final String p) { check(intent, true); }
-		@Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user) { check(intent, true); }
-		@Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission) { check(intent, true); }
-		@Override public void sendStickyBroadcast(final Intent intent) { check(intent, true); }
-		@Override public void sendStickyBroadcastAsUser(final Intent intent, final UserHandle u) { check(intent, true); }
-		@Override public void sendOrderedBroadcast(final Intent intent, final String p) { check(intent, true); }
-		@Override public void sendOrderedBroadcast(final Intent intent, final String p, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent, true); }
-		@Override public void sendOrderedBroadcastAsUser(final Intent intent, final UserHandle u, final String p, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent, true); }
-		@Override public void sendStickyOrderedBroadcast(final Intent intent, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent, true); }
-		@Override public void sendStickyOrderedBroadcastAsUser(final Intent intent, final UserHandle u, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent, true); }
+		@CallSuper void check(final Intent intent) {
+			assertBaseNotCalled();
+			mBaseCalled = true;
+			mIntentFlags = intent.getFlags();
+		}
+
+		@Override public ComponentName startService(final Intent intent) { check(intent); return null; }
+		@Override public boolean bindService(final Intent intent, final ServiceConnection c, final int f) { check(intent); return false; }
+		@Override public void sendBroadcast(final Intent intent) { check(intent); }
+		@Override public void sendBroadcast(final Intent intent, final String p) { check(intent); }
+		@Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user) { check(intent); }
+		@Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission) { check(intent); }
+		@Override public void sendStickyBroadcast(final Intent intent) { check(intent); }
+		@Override public void sendStickyBroadcastAsUser(final Intent intent, final UserHandle u) { check(intent); }
+		@Override public void sendOrderedBroadcast(final Intent intent, final String p) { check(intent); }
+		@Override public void sendOrderedBroadcast(final Intent intent, final String p, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent); }
+		@Override public void sendOrderedBroadcastAsUser(final Intent intent, final UserHandle u, final String p, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent); }
+		@Override public void sendStickyOrderedBroadcast(final Intent intent, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent); }
+		@Override public void sendStickyOrderedBroadcastAsUser(final Intent intent, final UserHandle u, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent); }
 
 		@Override public PackageManager getPackageManager() {
 			return new PackageManagerWrapper(InstrumentationRegistry.getTargetContext().getPackageManager()) {
 
 				@Override public ResolveInfo resolveService(final Intent intent, final int flags) {
-					check(intent, false);
+					check(intent);
 					return buildResolveInfo(DISALLOWED_PACKAGE, true, 7777777);	// Must be consistent with the first entry from queryIntentServices().
 				}
 
 				@Override public List<ResolveInfo> queryIntentServices(final Intent intent, final int flags) {
-					check(intent, false);
+					check(intent);
 					final List<ResolveInfo> resolves = new ArrayList<>();
 					if (mTestingBackgroundUid) {
 						final ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
@@ -364,7 +357,7 @@ public class CondomContextBlockingTest {
 				}
 
 				@Override public List<ResolveInfo> queryBroadcastReceivers(final Intent intent, final int flags) {
-					check(intent, true);
+					check(intent);
 					final List<ResolveInfo> resolves = new ArrayList<>();
 					resolves.add(buildResolveInfo(ALLOWED_PACKAGE, false, android.os.Process.myUid()));
 					resolves.add(buildResolveInfo(DISALLOWED_PACKAGE, false, android.os.Process.myUid()));
@@ -389,14 +382,23 @@ public class CondomContextBlockingTest {
 			};
 		}
 
-		void assertBaseCalled() { assertTrue(mBaseCalled.getAndSet(false)); }
-		void assertBaseNotCalled() { assertFalse(mBaseCalled.get()); }
+		void assertBaseCalled() { assertTrue(mBaseCalled); mBaseCalled = false; }
+		void assertBaseNotCalled() { assertFalse(mBaseCalled); }
+
+		Runnable expectFlags(final int flags) {
+			return new Runnable() { @Override public void run() {
+				assertEquals(flags | INTENT_FLAGS, mIntentFlags);
+			}};
+		}
 
 		TestContext() { super((InstrumentationRegistry.getTargetContext())); }
 
 		boolean mTestingBackgroundUid;
 		boolean mTestingStoppedProvider;
-		private final AtomicBoolean mBaseCalled = new AtomicBoolean();
+		private int mIntentFlags;
+		private boolean mBaseCalled;
+
+		final Runnable EXPECT_BASE_CALLED = new Runnable() { @Override public void run() { assertBaseCalled(); } };
 	}
 
 	private interface Consumer<T> { void accept(T t); }
