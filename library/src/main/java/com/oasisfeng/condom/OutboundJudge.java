@@ -25,7 +25,7 @@ package com.oasisfeng.condom;
 public interface OutboundJudge {
 	/**
 	 * Judge the outbound request or query by its explicit target package. For query requests, this will be called for each candidate,
-	 * before additional filtering (e.g. {@link CondomContext#preventServiceInBackgroundPackages(boolean)}) is applied.
+	 * before additional filtering (e.g. {@link CondomOptions#preventServiceInBackgroundPackages(boolean)}) is applied.
 	 *
 	 * <p>Note: Implicit broadcast will never go through this.
 	 *

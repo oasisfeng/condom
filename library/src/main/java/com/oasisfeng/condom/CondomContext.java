@@ -62,16 +62,20 @@ import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR2;
 @ParametersAreNonnullByDefault @Keep
 public class CondomContext extends ContextWrapper {
 
+	public static @CheckResult CondomContext wrap(final Context base, final @Nullable String tag) {
+		return wrap(base, tag, new CondomOptions());
+	}
+
 	/**
 	 * This is the very first (probably only) API you need to wrap the naked {@link Context} under protection of <code>CondomContext</code>
 	 *
 	 * @param base	the original context used before <code>CondomContext</code> is introduced.
 	 * @param tag	the optional tag to distinguish between multiple instances of <code>CondomContext</code> used parallel.
 	 */
-	public static @CheckResult CondomContext wrap(final Context base, final @Nullable String tag) {
+	public static @CheckResult CondomContext wrap(final Context base, final @Nullable String tag, final CondomOptions options) {
 		if (base instanceof CondomContext) return (CondomContext) base;
 		final Context app_context = base.getApplicationContext();
-		final CondomCore condom = new CondomCore(base);
+		final CondomCore condom = new CondomCore(base, options);
 		if (app_context instanceof Application) {	// The application context is indeed an Application, this should be preserved semantically.
 			final Application app = (Application) app_context;
 			final CondomApplication condom_app = new CondomApplication(condom, app, tag);
@@ -81,10 +85,7 @@ public class CondomContext extends ContextWrapper {
 		} else return new CondomContext(condom, base == app_context ? null : new CondomContext(condom, app_context, tag), tag);
 	}
 
-	/** Set a custom judge for the explicit target package of outbound service and broadcast requests. */
-	public CondomContext setOutboundJudge(final OutboundJudge judge) { mCondom.mOutboundJudge = judge; return this; }
-
-	/** Set to dry-run mode to inspect the outbound wake-up only, no outbound requests will be actually blocked. */
+	/** @deprecated Use {@link CondomOptions} instead */
 	public CondomContext setDryRun(final boolean dry_run) {
 		if (dry_run == mCondom.mDryRun) return this;
 		mCondom.mDryRun = dry_run;
@@ -93,28 +94,14 @@ public class CondomContext extends ContextWrapper {
 		return this;
 	}
 
-	/**
-	 * Prevent outbound service request from waking-up force-stopped packages. (default: true, not recommended to change)
-	 *
-	 * <p>If a package is force-stopped by user, it usually mean that app did not work as expected (most probably due to repeated crashes).
-	 * Waking-up those packages usually leads to bad user experience, even the worse, the infamous annoying "APP STOPPED" dialog.
-	 */
-	public CondomContext preventWakingUpStoppedPackages(final boolean prevent_or_not) { mCondom.mExcludeStoppedPackages = prevent_or_not; return this; }
+	/** @deprecated Use {@link CondomOptions} instead */
+	@Deprecated public CondomContext preventWakingUpStoppedPackages(final boolean prevent_or_not) { mCondom.mExcludeStoppedPackages = prevent_or_not; return this; }
 
-	/**
-	 * Prevent broadcast to be delivered to manifest receivers in background (cached or not running) apps. (default: true)
-	 *
-	 * <p>This restriction is supported natively since Android O, and it works similarly by only targeting registered receivers on previous Android versions.
-	 */
-	public CondomContext preventBroadcastToBackgroundPackages(final boolean prevent_or_not) { mCondom.mExcludeBackgroundReceivers = prevent_or_not; return this; }
+	/** @deprecated Use {@link CondomOptions} instead */
+	@Deprecated public CondomContext preventBroadcastToBackgroundPackages(final boolean prevent_or_not) { mCondom.mExcludeBackgroundReceivers = prevent_or_not; return this; }
 
-	/**
-	 * Prevent service in background (cached or not running) apps to be discovered via {@link PackageManager#queryIntentServices(Intent, int)}
-	 * or {@link PackageManager#resolveService(Intent, int)}. (default: true)
-	 *
-	 * <p>This restriction is supported natively since Android O, and it works similarly by only targeting registered receivers on previous Android versions.
-	 */
-	public CondomContext preventServiceInBackgroundPackages(final boolean prevent_or_not) { mCondom.mExcludeBackgroundServices = prevent_or_not; return this; }
+	/** @deprecated Use {@link CondomOptions} instead */
+	@Deprecated public CondomContext preventServiceInBackgroundPackages(final boolean prevent_or_not) { mCondom.mExcludeBackgroundServices = prevent_or_not; return this; }
 
 	/* ****** Hooked Context APIs ****** */
 

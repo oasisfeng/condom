@@ -145,20 +145,18 @@ public class CondomContextBlockingTest {
 
 	@Test public void testContentProvider() {
 		final TestContext context = new TestContext();
-		final CondomContext condom = CondomContext.wrap(context, TAG);
-
 		// Outbound judge
-		condom.setOutboundJudge(new OutboundJudge() { @Override public boolean shouldAllow(final OutboundType type, final String target_pkg) {
+		CondomContext condom = CondomContext.wrap(context, TAG, new CondomOptions().setOutboundJudge(new OutboundJudge() { @Override public boolean shouldAllow(final OutboundType type, final String target_pkg) {
 			final String settings_pkg = InstrumentationRegistry.getTargetContext().getPackageManager().resolveContentProvider(Settings.System.CONTENT_URI.getAuthority(), 0).packageName;
 			return ! settings_pkg.equals(target_pkg);
-		}});
+		}}));
 		assertNull(condom.getPackageManager().resolveContentProvider(Settings.AUTHORITY, 0));
 		try {
 			condom.getContentResolver().call(Settings.System.CONTENT_URI, "test", null, null);
 			fail("Provider not blocked by outbound judge.");
 		} catch (final IllegalArgumentException ignored) {}
 		//noinspection ConstantConditions
-		condom.setOutboundJudge(null);
+		condom = CondomContext.wrap(context, TAG);
 
 		// Regular provider access
 		final String actual_android_id = Settings.System.getString(condom.getContentResolver(), Settings.System.ANDROID_ID);
@@ -186,12 +184,12 @@ public class CondomContextBlockingTest {
 
 	@Test public void testOutboundJudgeIncludingDryRun() {
 		final TestContext context = new TestContext();
-		final CondomContext condom = CondomContext.wrap(context, TAG).setOutboundJudge(new OutboundJudge() {
+		final CondomContext condom = CondomContext.wrap(context, TAG, new CondomOptions().setOutboundJudge(new OutboundJudge() {
 			@Override public boolean shouldAllow(final OutboundType type, final String target_pkg) {
 				mNumOutboundJudgeCalled.incrementAndGet();
 				return ! DISALLOWED_PACKAGE.equals(target_pkg);
 			}
-		});
+		}));
 		final PackageManager pm = condom.getPackageManager();
 
 		final Runnable EXPECT_OUTBOUND_JUDGE_REFUSAL = new Runnable() { @Override public void run() {

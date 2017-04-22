@@ -112,7 +112,7 @@ class CondomCore {
 	}
 
 	private boolean shouldBlockRequestTarget(final OutboundType type, final String target_pkg) {
-		return mOutboundJudge != null && ! mOutboundJudge.shouldAllow(type, target_pkg) && ! mDryRun;
+		return mOutboundJudge != null && ! mOutboundJudge.shouldAllow(type, target_pkg) && ! mDryRun;	// Dry-run must be checked at the latest to ensure outbound judge is always called.
 	}
 
 	private int adjustIntentFlags(final OutboundType type, final Intent intent) {
@@ -171,21 +171,27 @@ class CondomCore {
 		return tag.length() > 23 ? tag.substring(0, 22) + "…" : tag;
 	}
 
-	CondomCore(final Context base) {
+	CondomCore(final Context base, final CondomOptions options) {
 		mBase = base;
 		DEBUG = (base.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+		mExcludeBackgroundReceivers = options.mExcludeBackgroundReceivers;
+		mExcludeBackgroundServices = options.mExcludeBackgroundServices;
+		mOutboundJudge = options.mOutboundJudge;
+		mDryRun = options.mDryRun;
+		if (mDryRun) Log.w(TAG, "Start dry-run mode, no outbound requests will be blocked actually, despite later stated in log.");
 	}
 
 	final Context mBase;
 	final boolean DEBUG;
 
 	boolean mDryRun;
-	@Nullable OutboundJudge mOutboundJudge;
+	private final @Nullable OutboundJudge mOutboundJudge;
 	boolean mExcludeStoppedPackages = true;
-	boolean mExcludeBackgroundReceivers = true;
-	boolean mExcludeBackgroundServices = true;
+	boolean mExcludeBackgroundReceivers;
+	boolean mExcludeBackgroundServices;
 
 	private static final int EVENT_TAG = "Condom".hashCode();
+	private static final String TAG = "Condom";
 
 	/**
 	 * If set, the broadcast will never go to manifest receivers in background (cached
