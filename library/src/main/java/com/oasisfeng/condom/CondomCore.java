@@ -40,6 +40,7 @@ import java.util.List;
 
 import static android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_BACKGROUND;
 import static android.content.Context.ACTIVITY_SERVICE;
+import static android.content.pm.ApplicationInfo.FLAG_STOPPED;
 import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.HONEYCOMB_MR1;
 import static android.os.Build.VERSION_CODES.LOLLIPOP_MR1;
@@ -53,18 +54,13 @@ import static android.os.Build.VERSION_CODES.N;
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 class CondomCore {
 
-	boolean shouldAllowProvider(final ProviderInfo provider) {
-		return mBase.getPackageName().equals(provider.packageName) || ! shouldBlockRequestTarget(OutboundType.CONTENT, provider.packageName)
-				&& (SDK_INT < HONEYCOMB_MR1 || ! mExcludeStoppedPackages || (provider.applicationInfo.flags & ApplicationInfo.FLAG_STOPPED) == 0);
-	}
-
 	interface WrappedValueProcedure<R> extends WrappedValueProcedureThrows<R, RuntimeException> {}
 
-	interface WrappedValueProcedureThrows<R, T extends Throwable> { R proceed(Intent intent) throws T; }
+	interface WrappedValueProcedureThrows<R, T extends Throwable> { R proceed() throws T; }
 
 	static abstract class WrappedProcedure implements WrappedValueProcedure<Void> {
-		abstract void run(Intent intent);
-		@Override public Void proceed(final Intent intent) { run(intent); return null; }
+		abstract void run();
+		@Override public Void proceed() { run(); return null; }
 	}
 
 	@SuppressLint("CheckResult") void proceedBroadcast(final Intent intent, final CondomCore.WrappedProcedure procedure) {
@@ -75,13 +71,13 @@ class CondomCore {
 													final CondomCore.WrappedValueProcedureThrows<R, T> procedure) throws T {
 		final String target_pkg = getTargetPackage(intent);
 		if (target_pkg != null) {
-			if (mBase.getPackageName().equals(target_pkg)) return procedure.proceed(intent);	// Self-targeting request is allowed unconditionally
+			if (mBase.getPackageName().equals(target_pkg)) return procedure.proceed();	// Self-targeting request is allowed unconditionally
 
-			if (shouldBlockRequestTarget(type, target_pkg)) return negative_value;
+			if (shouldBlockRequestTarget(type, intent, target_pkg)) return negative_value;
 		}
 		final int original_flags = adjustIntentFlags(type, intent);
 		try {
-			return procedure.proceed(intent);
+			return procedure.proceed();
 		} finally {
 			intent.setFlags(original_flags);
 		}
@@ -89,8 +85,8 @@ class CondomCore {
 
 	@CheckResult <T extends Throwable> List<ResolveInfo> proceedQuery(
 			final OutboundType type, final Intent intent, final CondomCore.WrappedValueProcedureThrows<List<ResolveInfo>, T> procedure) throws T {
-		return proceed(type, intent, Collections.<ResolveInfo>emptyList(), new CondomCore.WrappedValueProcedureThrows<List<ResolveInfo>, T>() { @Override public List<ResolveInfo> proceed(final Intent intent) throws T {
-			final List<ResolveInfo> candidates = procedure.proceed(intent);
+		return proceed(type, intent, Collections.<ResolveInfo>emptyList(), new CondomCore.WrappedValueProcedureThrows<List<ResolveInfo>, T>() { @Override public List<ResolveInfo> proceed() throws T {
+			final List<ResolveInfo> candidates = procedure.proceed();
 
 			if (mOutboundJudge != null && getTargetPackage(intent) == null) {	// Package-targeted intent is already filtered by OutboundJudge in proceed().
 				final Iterator<ResolveInfo> iterator = candidates.iterator();
@@ -98,7 +94,7 @@ class CondomCore {
 					final ResolveInfo candidate = iterator.next();
 					final String pkg = type == OutboundType.QUERY_SERVICES ? candidate.serviceInfo.packageName
 							: (type == OutboundType.QUERY_RECEIVERS ? candidate.activityInfo.packageName : null);
-					if (pkg != null && shouldBlockRequestTarget(type, pkg))
+					if (pkg != null && shouldBlockRequestTarget(type, intent, pkg))		// Dry-run is checked inside shouldBlockRequestTarget()
 						iterator.remove();		// TODO: Not safe to assume the list returned from PackageManager is modifiable.
 				}
 			}
@@ -111,8 +107,9 @@ class CondomCore {
 		return component != null ? component.getPackageName() : intent.getPackage();
 	}
 
-	private boolean shouldBlockRequestTarget(final OutboundType type, final String target_pkg) {
-		return mOutboundJudge != null && ! mOutboundJudge.shouldAllow(type, target_pkg) && ! mDryRun;	// Dry-run must be checked at the latest to ensure outbound judge is always called.
+	private boolean shouldBlockRequestTarget(final OutboundType type, final @Nullable Intent intent, final String target_pkg) {
+		// Dry-run must be checked at the latest to ensure outbound judge is always called.
+		return mOutboundJudge != null && ! mOutboundJudge.shouldAllow(type, intent, target_pkg) && ! mDryRun;
 	}
 
 	private int adjustIntentFlags(final OutboundType type, final Intent intent) {
@@ -125,35 +122,63 @@ class CondomCore {
 		return original_flags;
 	}
 
-	@Nullable ResolveInfo getFirstNonBackground(final Intent intent, final @Nullable List<ResolveInfo> candidates, final String tag) {
+	@Nullable ResolveInfo filterCandidates(final OutboundType type, final Intent original_intent, final @Nullable List<ResolveInfo> candidates, final String tag, final boolean remove) {
 		if (candidates == null || candidates.isEmpty()) return null;
 
 		final int my_uid = Process.myUid();
 		BackgroundUidFilter bg_uid_filter = null;
-		for (final ResolveInfo candidate : candidates) {
+		ResolveInfo match = null;
+		for (final Iterator<ResolveInfo> iterator = candidates.iterator(); iterator.hasNext(); match = null) {
+			final ResolveInfo candidate = iterator.next();
 			final ApplicationInfo app_info = candidate.serviceInfo.applicationInfo;
 			final int uid = app_info.uid;
-			if (uid == my_uid) return candidate;		// Self UID is always allowed
-			if (bg_uid_filter == null) bg_uid_filter = new BackgroundUidFilter();
-			if (bg_uid_filter.isUidNotBackground(uid)) return candidate;
-			log(tag, CondomEvent.FILTER_BG_SERVICE, app_info.packageName, intent.toString());
+			if (uid == my_uid) match = candidate;        // Self UID is always allowed
+			else if (mOutboundJudge == null || mOutboundJudge.shouldAllow(type, original_intent, app_info.packageName)) {
+				if (mExcludeBackgroundServices) {
+					if (bg_uid_filter == null) bg_uid_filter = new BackgroundUidFilter();
+					if (bg_uid_filter.isUidNotBackground(uid)) match = candidate;
+				} else match = candidate;
+			}
+
+			if (match == null) log(tag, CondomEvent.FILTER_BG_SERVICE, app_info.packageName, original_intent.toString());
+			if (mDryRun) return candidate;        // Always touch nothing and return the first candidate in dry-run mode.
+			if (remove) {
+				if (match == null) iterator.remove();
+			} else if (match != null) return match;
 		}
 		return null;
 	}
 
+	boolean shouldAllowProvider(final @Nullable ProviderInfo provider) {
+		if (provider == null) return false;
+		if (mBase.getPackageName().equals(provider.packageName)) return true;
+		if (shouldBlockRequestTarget(OutboundType.CONTENT, null, provider.packageName)) return mDryRun;
+		if (SDK_INT >= HONEYCOMB_MR1 && mExcludeStoppedPackages && (provider.applicationInfo.flags & FLAG_STOPPED) != 0) return mDryRun;
+		return true;
+	}
+
+	boolean shouldAllowProvider(final Context context, final String name, final int flags) {
+		return shouldAllowProvider(context.getPackageManager().resolveContentProvider(name, flags));
+	}
+
 	enum CondomEvent { CONCERN, BIND_PASS, START_PASS, FILTER_BG_SERVICE }
 
-	void log(final String tag, final CondomEvent event, final Object... args) {
+	private void log(final String tag, final CondomEvent event, final String... args) {
 		final Object[] event_args = new Object[2 + args.length];
-		event_args[0] = mBase.getPackageName(); event_args[1] = tag;
+		event_args[0] = mBase.getPackageName(); event_args[1] = tag;	// Package name and tag are shared parameters for all events.
 		System.arraycopy(args, 0, event_args, 2, args.length);
 		EventLog.writeEvent(EVENT_TAG + event.ordinal(), event_args);
 		if (DEBUG) Log.d(tag, event.name() + " " + Arrays.toString(args));
 	}
 
 	void logConcern(final String tag, final String label) {
-		EventLog.writeEvent(EVENT_TAG + CondomEvent.CONCERN.ordinal(), label, getCaller());
+		EventLog.writeEvent(EVENT_TAG + CondomEvent.CONCERN.ordinal(), mBase.getPackageName(), tag, label, getCaller());
 		if (DEBUG) Log.w(tag, label + " is invoked", new Throwable());
+	}
+
+	void logIfOutboundPass(final String tag, final Intent intent, final @Nullable String target_pkg, final CondomEvent event) {
+		if (target_pkg != null && ! mBase.getPackageName().equals(target_pkg))
+			log(tag, event, target_pkg, intent.toString());
 	}
 
 	private static String getCaller() {
@@ -185,7 +210,7 @@ class CondomCore {
 	final boolean DEBUG;
 
 	boolean mDryRun;
-	private final @Nullable OutboundJudge mOutboundJudge;
+	@VisibleForTesting @Nullable OutboundJudge mOutboundJudge;
 	boolean mExcludeStoppedPackages = true;
 	boolean mExcludeBackgroundReceivers;
 	boolean mExcludeBackgroundServices;

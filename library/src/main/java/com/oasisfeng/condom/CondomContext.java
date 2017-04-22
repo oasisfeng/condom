@@ -34,7 +34,6 @@ import android.content.pm.ProviderInfo;
 import android.content.pm.ResolveInfo;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Process;
 import android.os.UserHandle;
 import android.support.annotation.CheckResult;
 import android.support.annotation.Keep;
@@ -44,7 +43,6 @@ import android.util.Log;
 
 import com.oasisfeng.condom.util.Lazy;
 
-import java.util.Iterator;
 import java.util.List;
 
 import javax.annotation.ParametersAreNonnullByDefault;
@@ -106,92 +104,85 @@ public class CondomContext extends ContextWrapper {
 	/* ****** Hooked Context APIs ****** */
 
 	@Override public boolean bindService(final Intent intent, final ServiceConnection conn, final int flags) {
-		final boolean result = mCondom.proceed(OutboundType.BIND_SERVICE, intent, Boolean.FALSE, new CondomCore.WrappedValueProcedure<Boolean>() {
-			@Override public Boolean proceed(final Intent intent) {
-				return CondomContext.super.bindService(intent, conn, flags);
-			}
-		});
-		final String target_pkg;
-		if (result && (target_pkg = CondomCore.getTargetPackage(intent)) != null && ! getPackageName().equals(target_pkg))		// 3rd-party service
-			mCondom.log(TAG, CondomCore.CondomEvent.BIND_PASS, target_pkg, intent.toString());
+		final boolean result = mCondom.proceed(OutboundType.BIND_SERVICE, intent, Boolean.FALSE, new CondomCore.WrappedValueProcedure<Boolean>() { @Override public Boolean proceed() {
+			return CondomContext.super.bindService(intent, conn, flags);
+		}});
+		if (result) mCondom.logIfOutboundPass(TAG, intent, CondomCore.getTargetPackage(intent), CondomCore.CondomEvent.BIND_PASS);
 		return result;
 	}
 
 	@Override public ComponentName startService(final Intent intent) {
-		final ComponentName component = mCondom.proceed(OutboundType.START_SERVICE, intent, null, new CondomCore.WrappedValueProcedure<ComponentName>() {
-			@Override public ComponentName proceed(final Intent intent) {
-				return CondomContext.super.startService(intent);
-			}
-		});
-		if (component != null && ! getPackageName().equals(component.getPackageName()))		// 3rd-party service
-			mCondom.log(TAG, CondomCore.CondomEvent.START_PASS, component.getPackageName(), intent.toString());
+		final ComponentName component = mCondom.proceed(OutboundType.START_SERVICE, intent, null, new CondomCore.WrappedValueProcedure<ComponentName>() { @Override public ComponentName proceed() {
+			return CondomContext.super.startService(intent);
+		}});
+		if (component != null) mCondom.logIfOutboundPass(TAG, intent, component.getPackageName(), CondomCore.CondomEvent.START_PASS);
 		return component;
 	}
 
 	@Override public void sendBroadcast(final Intent intent) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run(final Intent intent) {
+		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendBroadcast(intent);
 		}});
 	}
 
 	@Override public void sendBroadcast(final Intent intent, final String receiverPermission) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run(final Intent intent) {
+		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendBroadcast(intent, receiverPermission);
 		}});
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run(final Intent intent) {
+		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendBroadcastAsUser(intent, user);
 		}});
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run(final Intent intent) {
+		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendBroadcastAsUser(intent, user, receiverPermission);
 		}});
 	}
 
 	@Override public void sendOrderedBroadcast(final Intent intent, final String receiverPermission) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run(final Intent intent) {
+		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendOrderedBroadcast(intent, receiverPermission);
 		}});
 	}
 
 	@Override public void sendOrderedBroadcast(final Intent intent, final String receiverPermission, final BroadcastReceiver resultReceiver,
 											   final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run(final Intent intent) {
+		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendOrderedBroadcast(intent, receiverPermission, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 		}});
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendOrderedBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission, final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run(final Intent intent) {
+		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendOrderedBroadcastAsUser(intent, user, receiverPermission, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 		}});
 	}
 
 	@Override public void sendStickyBroadcast(final Intent intent) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run(final Intent intent) {
+		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendStickyBroadcast(intent);
 		}});
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendStickyBroadcastAsUser(final Intent intent, final UserHandle user) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run(final Intent intent) {
+		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendStickyBroadcastAsUser(intent, user);
 		}});
 	}
 
 	@Override public void sendStickyOrderedBroadcast(final Intent intent, final BroadcastReceiver resultReceiver, final Handler scheduler,
 													 final int initialCode, final String initialData, final Bundle initialExtras) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run(final Intent intent) {
+		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendStickyOrderedBroadcast(intent, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 		}});
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendStickyOrderedBroadcastAsUser(final Intent intent, final UserHandle user, final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run(final Intent intent) {
+		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendStickyOrderedBroadcastAsUser(intent, user, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 		}});
 	}
@@ -235,47 +226,36 @@ public class CondomContext extends ContextWrapper {
 	class CondomPackageManager extends PackageManagerWrapper {
 
 		@Override public List<ResolveInfo> queryBroadcastReceivers(final Intent intent, final int flags) {
-			return mCondom.proceedQuery(OutboundType.QUERY_RECEIVERS, intent, new CondomCore.WrappedValueProcedure<List<ResolveInfo>>() { @Override public List<ResolveInfo> proceed(final Intent intent) {
+			return mCondom.proceedQuery(OutboundType.QUERY_RECEIVERS, intent, new CondomCore.WrappedValueProcedure<List<ResolveInfo>>() { @Override public List<ResolveInfo> proceed() {
 				return CondomPackageManager.super.queryBroadcastReceivers(intent, flags);
 			}});
 		}
 
 		@Override public List<ResolveInfo> queryIntentServices(final Intent intent, final int flags) {
-			return mCondom.proceedQuery(OutboundType.QUERY_SERVICES, intent, new CondomCore.WrappedValueProcedure<List<ResolveInfo>>() { @Override public List<ResolveInfo> proceed(final Intent intent) {
+			final int original_intent_flags = intent.getFlags();
+			return mCondom.proceedQuery(OutboundType.QUERY_SERVICES, intent, new CondomCore.WrappedValueProcedure<List<ResolveInfo>>() { @Override public List<ResolveInfo> proceed() {
 				final List<ResolveInfo> result = CondomPackageManager.super.queryIntentServices(intent, flags);
-				if (! mCondom.mExcludeBackgroundServices || result.isEmpty()) return result;
-
-				final int my_uid = Process.myUid(); CondomCore.BackgroundUidFilter bg_uid_filter = null;
-				final Iterator<ResolveInfo> result_iterator = result.iterator();
-				while (result_iterator.hasNext()) {
-					final ResolveInfo candidate = result_iterator.next();
-					final ApplicationInfo app_info = candidate.serviceInfo.applicationInfo;
-					if (app_info.uid == my_uid) continue;
-					if (bg_uid_filter == null) bg_uid_filter = mCondom.new BackgroundUidFilter();
-					if (! bg_uid_filter.isUidNotBackground(app_info.uid)) {
-						if (! mCondom.mDryRun) result_iterator.remove();
-						mCondom.log(TAG, CondomCore.CondomEvent.FILTER_BG_SERVICE, app_info.packageName, intent.toString());
-					}
-				}
+				mCondom.filterCandidates(OutboundType.QUERY_SERVICES, intent.setFlags(original_intent_flags), result, TAG, true);
 				return result;
 			}});
 		}
 
 		@Override public ResolveInfo resolveService(final Intent intent, final int flags) {
+			final int original_intent_flags = intent.getFlags();
 			// Intent flags could only filter background receivers, we have to deal with services by ourselves.
-			return mCondom.proceed(OutboundType.QUERY_SERVICES, intent, null, new CondomCore.WrappedValueProcedure<ResolveInfo>() { @Override public ResolveInfo proceed(final Intent intent) {
-				if (! mCondom.mExcludeBackgroundServices) return CondomPackageManager.super.resolveService(intent, flags);
+			return mCondom.proceed(OutboundType.QUERY_SERVICES, intent, null, new CondomCore.WrappedValueProcedure<ResolveInfo>() { @Override public ResolveInfo proceed() {
+				if (! mCondom.mExcludeBackgroundServices && mCondom.mOutboundJudge == null)
+					return CondomPackageManager.super.resolveService(intent, flags);	// Shortcut for pass-through
 
 				final List<ResolveInfo> candidates = CondomPackageManager.super.queryIntentServices(intent, flags);
-				final ResolveInfo resolve = mCondom.getFirstNonBackground(intent, candidates, TAG);
-				if (mCondom.mDryRun) return candidates == null || candidates.isEmpty() ? null : candidates.get(0);
-				return resolve;
+				final Intent original_intent = intent.setFlags(original_intent_flags);	// Restore the intent flags early before getFirstMatch().
+				return mCondom.filterCandidates(OutboundType.QUERY_SERVICES, original_intent, candidates, TAG, false);
 			}});
 		}
 
 		@Override public ProviderInfo resolveContentProvider(final String name, final int flags) {
 			final ProviderInfo provider = super.resolveContentProvider(name, flags);
-			if (! mCondom.shouldAllowProvider(provider) && ! mCondom.mDryRun) return null;
+			if (! mCondom.shouldAllowProvider(provider)) return null;
 			return provider;
 		}
 
@@ -294,18 +274,14 @@ public class CondomContext extends ContextWrapper {
 
 	private class CondomContentResolver extends ContentResolverWrapper {
 
-		@Override public IContentProvider acquireUnstableProvider(final Context c, final String name) {
-			if (! shouldAllowProvider(c, name) && ! mCondom.mDryRun) return null;
-			return super.acquireUnstableProvider(c, name);
+		@Override public IContentProvider acquireUnstableProvider(final Context context, final String name) {
+			if (! mCondom.shouldAllowProvider(context, name, PackageManager.GET_UNINSTALLED_PACKAGES)) return null;
+			return super.acquireUnstableProvider(context, name);
 		}
 
-		@Override public IContentProvider acquireProvider(final Context c, final String name) {
-			if (! shouldAllowProvider(c, name) && ! mCondom.mDryRun) return null;
-			return super.acquireProvider(c, name);
-		}
-
-		private boolean shouldAllowProvider(final Context c, final String name) {
-			return CondomContext.this.mCondom.shouldAllowProvider(c.getPackageManager().resolveContentProvider(name, 0));
+		@Override public IContentProvider acquireProvider(final Context context, final String name) {
+			if (! mCondom.shouldAllowProvider(context, name, PackageManager.GET_UNINSTALLED_PACKAGES)) return null;
+			return super.acquireProvider(context, name);
 		}
 
 		CondomContentResolver(final Context context, final ContentResolver base) { super(context, base); }

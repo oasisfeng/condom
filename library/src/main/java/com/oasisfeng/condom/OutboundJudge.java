@@ -17,6 +17,10 @@
 
 package com.oasisfeng.condom;
 
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.support.annotation.Nullable;
+
 /**
  * The callback for outbound request filtering.
  *
@@ -24,13 +28,19 @@ package com.oasisfeng.condom;
  */
 public interface OutboundJudge {
 	/**
-	 * Judge the outbound request or query by its explicit target package. For query requests, this will be called for each candidate,
+	 * Judge the outbound request or query by intent and its target package, which may or may not be explicit in intent.
+	 *
+	 * <p>For query requests (including {@link PackageManager#resolveService(Intent, int)}, {@link PackageManager#queryIntentServices(Intent, int)}
+	 * and {@link PackageManager#queryBroadcastReceivers(Intent, int)}), this will be called for each candidate,
 	 * before additional filtering (e.g. {@link CondomOptions#preventServiceInBackgroundPackages(boolean)}) is applied.
 	 *
 	 * <p>Note: Implicit broadcast will never go through this.
 	 *
+	 * @param type the type of outbound request or query being judged
+	 * @param intent the intent of current request or query, or null if unavailable (e.g. content provider access).
+	 * @param target_package the target package of current request or candidate package of current query, may or may not be explicit in intent.
 	 * @return whether this outbound request should be allowed, or whether the query result entry should be included in the returned collection.
-	 *         Disallowed service request will simply fail and broadcast will be dropped.
+	 *         Disallowed service request will simply fail while disallowed broadcast target will be skipped.
 	 */
-	boolean shouldAllow(OutboundType type, String target_pkg);
+	boolean shouldAllow(OutboundType type, final @Nullable Intent intent, String target_package);
 }

@@ -38,6 +38,7 @@ import android.os.IBinder;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.support.annotation.CallSuper;
+import android.support.annotation.Nullable;
 import android.support.test.InstrumentationRegistry;
 
 import org.junit.Test;
@@ -58,7 +59,6 @@ import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.assertTrue;
-import static junit.framework.Assert.fail;
 
 @ParametersAreNonnullByDefault
 public class CondomContextBlockingTest {
@@ -133,7 +133,7 @@ public class CondomContextBlockingTest {
 
 	@Test public void testContentProviderOutboundJudge() {
 		final TestContext context = new TestContext();
-		final CondomOptions options = new CondomOptions().setOutboundJudge(new OutboundJudge() { @Override public boolean shouldAllow(final OutboundType type, final String target_pkg) {
+		final CondomOptions options = new CondomOptions().setOutboundJudge(new OutboundJudge() { @Override public boolean shouldAllow(final OutboundType type, final @Nullable Intent intent, final String target_pkg) {
 			final String settings_pkg = InstrumentationRegistry.getTargetContext().getPackageManager().resolveContentProvider(Settings.System.CONTENT_URI.getAuthority(), 0).packageName;
 			return ! settings_pkg.equals(target_pkg);
 		}});
@@ -141,14 +141,8 @@ public class CondomContextBlockingTest {
 
 		assertNull(condom.getPackageManager().resolveContentProvider(Settings.AUTHORITY, 0));
 		assertNotNull(dry_condom.getPackageManager().resolveContentProvider(Settings.AUTHORITY, 0));
-		try {
-			condom.getContentResolver().call(Settings.System.CONTENT_URI, "test", null, null);
-			fail("Provider not blocked by outbound judge.");
-		} catch (final IllegalArgumentException ignored) {}
-		try {
-			dry_condom.getContentResolver().call(Settings.System.CONTENT_URI, "test", null, null);
-			fail("Dry-run is not working.");
-		} catch (final SecurityException ignored) {}    // Expected: SecurityException: Permission denial: writing to settings requires android.permission.WRITE_SETTINGS
+		assertNull(condom.getContentResolver().acquireContentProviderClient(Settings.System.CONTENT_URI));
+		assertNotNull(dry_condom.getContentResolver().acquireContentProviderClient(Settings.System.CONTENT_URI));
 	}
 
 	@Test public void testContentProvider() {
@@ -166,21 +160,16 @@ public class CondomContextBlockingTest {
 		// Prevent stopped package
 		context.mTestingStoppedProvider = true;
 		assertNull(condom.getPackageManager().resolveContentProvider(Settings.AUTHORITY, 0));
-		try {
-			condom.getContentResolver().call(Settings.System.CONTENT_URI, "test", null, null);
-			fail("Stopped provider not blocked.");
-		} catch (final IllegalArgumentException ignored) {}
-		try {
-			dry_condom.getContentResolver().call(Settings.System.CONTENT_URI, "test", null, null);
-			fail("Dry-run is not working.");
-		} catch (final SecurityException ignored) {}    // Expected: SecurityException: Permission denial: writing to settings requires android.permission.WRITE_SETTINGS
+		assertNotNull(dry_condom.getPackageManager().resolveContentProvider(Settings.AUTHORITY, 0));
+		assertNull(condom.getContentResolver().acquireContentProviderClient(Settings.System.CONTENT_URI));
+		assertNotNull(dry_condom.getContentResolver().acquireContentProviderClient(Settings.System.CONTENT_URI));
 		context.mTestingStoppedProvider = false;
 	}
 
 	@Test public void testOutboundJudge() {
 		final TestContext context = new TestContext();
 		final CondomOptions options = new CondomOptions().setOutboundJudge(new OutboundJudge() {
-			@Override public boolean shouldAllow(final OutboundType type, final String target_pkg) {
+			@Override public boolean shouldAllow(final OutboundType type, final @Nullable Intent intent, final String target_pkg) {
 				mNumOutboundJudgeCalled.incrementAndGet();
 				return ! DISALLOWED_PACKAGE.equals(target_pkg);
 			}

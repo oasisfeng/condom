@@ -38,8 +38,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static android.os.Build.VERSION.SDK_INT;
-import static android.os.Build.VERSION_CODES.HONEYCOMB_MR1;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertTrue;
 
@@ -48,29 +46,31 @@ import static junit.framework.Assert.assertTrue;
  *
  * Created by Oasis on 2017/4/10.
  */
-public class MiscTest {
+public class CondomMiscTest {
 
 	@Test public void testEventLog() throws IOException {
 		readNewEvents(CondomCore.CondomEvent.CONCERN);
 
 		condom.getBaseContext();
 		Object[] data = readLastEvent(CondomCore.CondomEvent.CONCERN);
-		assertEquals("getBaseContext", data[0]);
+		assertEquals(condom.getPackageName(), data[0]);
+		assertEquals(condom.TAG, data[1]);
+		assertEquals("getBaseContext", data[2]);
 		assertCallerMatch(data);
 
 		((Application) condom.getApplicationContext()).getBaseContext();
 		data = readLastEvent(CondomCore.CondomEvent.CONCERN);
-		assertEquals("Application.getBaseContext", data[0]);
+		assertEquals("Application.getBaseContext", data[2]);
 		assertCallerMatch(data);
 
 		condom.getPackageManager().getInstalledApplications(0);
 		data = readLastEvent(CondomCore.CondomEvent.CONCERN);
-		assertEquals("PackageManager.getInstalledApplications", data[0]);
+		assertEquals("PackageManager.getInstalledApplications", data[2]);
 		assertCallerMatch(data);
 
 		condom.getPackageManager().getInstalledPackages(0);
 		data = readLastEvent(CondomCore.CondomEvent.CONCERN);
-		assertEquals("PackageManager.getInstalledPackages", data[0]);
+		assertEquals("PackageManager.getInstalledPackages", data[2]);
 		assertCallerMatch(data);
 
 		final Intent intent = new Intent().setPackage("a.b.c");
@@ -96,7 +96,7 @@ public class MiscTest {
 		assertEquals(condom.getPackageName(), data[0]);
 		assertEquals("Condom." + TAG, data[1]);
 		assertEquals("bg.service.1", data[2]);
-		final String expected_intent = new Intent(intent).addFlags(SDK_INT >= HONEYCOMB_MR1 ? Intent.FLAG_EXCLUDE_STOPPED_PACKAGES : 0).toString();	// Flags altered
+		final String expected_intent = new Intent(intent).toString();	// Flags altered
 		assertEquals(expected_intent, data[3]);
 		data = (Object[]) events.get(1).getData();
 		assertEquals(condom.getPackageName(), data[0]);
@@ -137,8 +137,8 @@ public class MiscTest {
 	}
 
 	private static void assertCallerMatch(final Object[] data) {
-		final String string = data[1].toString();
-		assertTrue(string, string.startsWith(MiscTest.class.getName() + ".testEventLog:"));
+		final String string = data[3].toString();
+		assertTrue(string, string.startsWith(CondomMiscTest.class.getName() + ".testEventLog:"));
 	}
 
 	private static Object[] readLastEvent(final CondomCore.CondomEvent type) throws IOException {
