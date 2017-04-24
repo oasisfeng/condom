@@ -13,7 +13,7 @@ Project Condom is a thin library to wrap the naked `Context` in your Android pro
 1. Add dependency to this library in build.gradle of your project module.
 
    ```
-   compile 'com.oasisfeng.condom:library:1.0.2'
+   compile 'com.oasisfeng.condom:library:1.1.0'
    ```
 
 2. Migration the initialization code of 3rd-party SDK.
@@ -51,7 +51,7 @@ That's it! Enjoy the protection.
    对于Gradle工程，直接在模块的依赖项清单中添加下面这一行：
 
    ```
-   compile 'com.oasisfeng.condom:library:1.0.2'
+   compile 'com.oasisfeng.condom:library:1.1.0'
    ```
 
    对于非Gradle工程，请[下载AAR文件](http://jcenter.bintray.com/com/oasisfeng/condom/library/)放进项目模块本地的 `libs` 路径中，并在工程的ProGuard配置文件中增加以下两行：（Gradle工程和不使用ProGuard的工程不需要这一步）
@@ -77,7 +77,7 @@ That's it! Enjoy the protection.
 
    其中参数`tag`（上例中的"XxxSDK"）为开发者根据需要指定的用于区分多个不同`CondomContext`实例的标识，将出现在日志的TAG后缀。如果只有一个`CondomContext`实例，或者不需要区分，则传入null亦可。
 
-3. 如果三方SDK含有自己的组件（Activity、Service、Receiver 或 Provider），为防止这些组件内的有害行为，还需要确保这些组件的工作进程与应用自己的进程隔离（`android:process`使用非应用自有组件的进程名），并在应用的`Application.onCreate()`起始部分调用`CondomProcess.installExceptDefaultProcess(this)`（或`CondomProcess.installExcept(this, ...)`）。如下所示：
+3. 如果三方SDK含有自己的组件（Activity、Service、Receiver 或 Provider），为防止这些组件内的有害行为，还需要确保这些组件的工作进程与应用自己的进程隔离（`android:process`使用非应用自有组件的进程名），并在应用的`Application.onCreate()`起始部分调用`CondomProcess.installExceptDefaultProcess(this)` (或`CondomProcess.installExcept(this, ...)`)。如下所示：
 
    ```
    public class MyApplication extends Application {
@@ -93,8 +93,10 @@ That's it! Enjoy the protection.
 
 ## 工作原理
 
-`CondomContext`是一个加入了特定API拦截和调整机制的`ContextWrapper`，这些调整和拦截包括：（均可单独开启或关闭）
+`CondomContext`是一个加入了特定API拦截和调整机制的`ContextWrapper`，它只作用于通过这个`CondomContext`实例发生的行为，完全不会触及除此之外的其它`Context`，因此不必担心对应用的自有功能造成影响，可以放心的使用。其中涉及到的调整和拦截包括：（可通过配置`CondomOptions`选择性使用）
 
 * 开发者可主动设置一个```OutboundJudge```回调，方便根据需求定制拦截策略。
 * 避免通过此Context发出的广播启动其它应用的进程。在Android N以上，通过为非应用内广播的```Intent```添加```FLAG_RECEIVER_EXCLUDE_BACKGROUND```标志达成；在低版本Android系统中，通过添加```FLAG_RECEIVER_REGISTERED_ONLY```达到类似的效果。
 * 避免通过此Context发出的广播或请求的服务启动已被用户强行停止的应用。通过为发往应用之外的广播或服务请求```Intent```添加```FLAG_EXCLUDE_STOPPED_PACKAGES```标识达成。
+
+`CondomProcess`采用了更偏底层的API拦截策略对整个进程内与系统服务之间的IPC通信进行拦截和调整，达到与`CondomContext`类似的效果。由于它被设计为工作在三方SDK组件的独立进程内，因此也不会对应用的自有功能造成任何影响。
