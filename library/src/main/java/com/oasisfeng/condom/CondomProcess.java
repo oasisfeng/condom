@@ -146,7 +146,8 @@ public class CondomProcess {
 	private static void install(final Application app, final String current_process_name, final CondomOptions options) {
 		final int pos_colon = current_process_name.indexOf(':');
 		final String tag = pos_colon > 0 ? current_process_name.substring(pos_colon) : current_process_name;
-		TAG = CondomCore.buildTag("Condom", "Condom:", tag);
+		FULL_TAG = "Condom:" + tag;
+		TAG = CondomCore.asLogTag(FULL_TAG);
 
 		final CondomCore condom = new CondomCore(app, options);
 		try {
@@ -225,14 +226,14 @@ public class CondomProcess {
 				final Integer result = mCondom.proceed(OutboundType.BIND_SERVICE, intent, 0, new CondomCore.WrappedValueProcedureThrows<Integer, Exception>() { @Override public Integer proceed() throws Exception {
 					return (Integer) CondomProcessActivityManager.super.invoke(proxy, method, args);
 				}});	// Result: 0 - no match, >0 - succeed, <0 - SecurityException.
-				if (result > 0) mCondom.logIfOutboundPass(TAG, intent, CondomCore.getTargetPackage(intent), CondomCore.CondomEvent.BIND_PASS);
+				if (result > 0) mCondom.logIfOutboundPass(FULL_TAG, intent, CondomCore.getTargetPackage(intent), CondomCore.CondomEvent.BIND_PASS);
 				return result;
 			case "startService":
 				intent = (Intent) args[1];
 				final ComponentName component = mCondom.proceed(OutboundType.START_SERVICE, intent, null, new CondomCore.WrappedValueProcedureThrows<ComponentName, Exception>() { @Override public ComponentName proceed() throws Exception {
 					return (ComponentName) CondomProcessActivityManager.super.invoke(proxy, method, args);
 				}});
-				if (component != null) mCondom.logIfOutboundPass(TAG, intent, component.getPackageName(), CondomCore.CondomEvent.START_PASS);
+				if (component != null) mCondom.logIfOutboundPass(FULL_TAG, intent, component.getPackageName(), CondomCore.CondomEvent.START_PASS);
 				return component;
 			case "getContentProvider":
 				final String name = (String) args[1];
@@ -291,7 +292,7 @@ public class CondomProcess {
 						if (IPackageManager_queryIntentServices == null) throw new IllegalStateException("Failed to capture IPackageManager.queryIntentServices()");
 					}
 					final List<ResolveInfo> candidates = asList(CondomProcessPackageManager.super.invoke(proxy, IPackageManager_queryIntentServices, args));
-					return mCondom.filterCandidates(OutboundType.QUERY_SERVICES, intent.setFlags(original_intent_flags), candidates, TAG, false);
+					return mCondom.filterCandidates(OutboundType.QUERY_SERVICES, intent.setFlags(original_intent_flags), candidates, FULL_TAG, false);
 				}});
 
 			case "resolveContentProvider":
@@ -299,7 +300,7 @@ public class CondomProcess {
 				return mCondom.shouldAllowProvider(provider) ? provider : null;
 			case "getInstalledApplications":
 			case "getInstalledPackages":
-				mCondom.logConcern(TAG, "IPackageManager." + method_name);
+				mCondom.logConcern(FULL_TAG, "IPackageManager." + method_name);
 				break;
 			}
 			return super.invoke(proxy, method, args);
@@ -346,5 +347,6 @@ public class CondomProcess {
 		final boolean DEBUG;
 	}
 
-	static String TAG = "CondomProcess";	// Will be replaced by compound tag
+	static String FULL_TAG = "CondomProcess";		// Both will be replaced by compound tag in install().
+	static String TAG = "CondomProcess";
 }

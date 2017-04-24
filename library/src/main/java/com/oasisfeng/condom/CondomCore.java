@@ -168,12 +168,12 @@ class CondomCore {
 		event_args[0] = mBase.getPackageName(); event_args[1] = tag;	// Package name and tag are shared parameters for all events.
 		System.arraycopy(args, 0, event_args, 2, args.length);
 		EventLog.writeEvent(EVENT_TAG + event.ordinal(), event_args);
-		if (DEBUG) Log.d(tag, event.name() + " " + Arrays.toString(args));
+		if (DEBUG) Log.d(asLogTag(tag), event.name() + " " + Arrays.toString(args));
 	}
 
 	void logConcern(final String tag, final String label) {
 		EventLog.writeEvent(EVENT_TAG + CondomEvent.CONCERN.ordinal(), mBase.getPackageName(), tag, label, getCaller());
-		if (DEBUG) Log.w(tag, label + " is invoked", new Throwable());
+		if (DEBUG) Log.w(asLogTag(tag), label + " is invoked", new Throwable());
 	}
 
 	void logIfOutboundPass(final String tag, final Intent intent, final @Nullable String target_pkg, final CondomEvent event) {
@@ -188,12 +188,12 @@ class CondomCore {
 		return caller.getClassName() + "." + caller.getMethodName() + ":" + caller.getLineNumber();
 	}
 
-	static String buildTag(final String default_tag, final String prefix, final @Nullable String tag) {
-		return tag == null || tag.isEmpty() ? default_tag : limitTagLength(prefix + tag);
+	static String buildLogTag(final String default_tag, final String prefix, final @Nullable String tag) {
+		return tag == null || tag.isEmpty() ? default_tag : asLogTag(prefix + tag);
 	}
 
-	private static String limitTagLength(final String tag) {	// Logging tag can be at most 23 characters.
-		return tag.length() > 23 ? tag.substring(0, 22) + "…" : tag;
+	static String asLogTag(final String tag) {	// Logging tag can be at most 23 characters.
+		return tag.length() > 23 ? tag.substring(0, 23) : tag;
 	}
 
 	CondomCore(final Context base, final CondomOptions options) {

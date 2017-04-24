@@ -39,6 +39,7 @@ import android.support.annotation.CheckResult;
 import android.support.annotation.Keep;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
+import android.support.annotation.Size;
 import android.util.Log;
 
 import com.oasisfeng.condom.util.Lazy;
@@ -60,7 +61,7 @@ import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR2;
 @ParametersAreNonnullByDefault @Keep
 public class CondomContext extends ContextWrapper {
 
-	public static @CheckResult CondomContext wrap(final Context base, final @Nullable String tag) {
+	public static @CheckResult CondomContext wrap(final Context base, final @Nullable @Size(max=13) String tag) {
 		return wrap(base, tag, new CondomOptions());
 	}
 
@@ -70,7 +71,7 @@ public class CondomContext extends ContextWrapper {
 	 * @param base	the original context used before <code>CondomContext</code> is introduced.
 	 * @param tag	the optional tag to distinguish between multiple instances of <code>CondomContext</code> used parallel.
 	 */
-	public static @CheckResult CondomContext wrap(final Context base, final @Nullable String tag, final CondomOptions options) {
+	public static @CheckResult CondomContext wrap(final Context base, final @Nullable @Size(max=13) String tag, final CondomOptions options) {
 		if (base instanceof CondomContext) return (CondomContext) base;
 		final Context app_context = base.getApplicationContext();
 		final CondomCore condom = new CondomCore(base, options);
@@ -197,7 +198,7 @@ public class CondomContext extends ContextWrapper {
 
 	/* ********************************* */
 
-	private CondomContext(final CondomCore condom, final @Nullable Context app_context, final @Nullable String tag) {
+	private CondomContext(final CondomCore condom, final @Nullable Context app_context, final @Nullable @Size(max=16) String tag) {
 		super(condom.mBase);
 		final Context base = condom.mBase;
 		mCondom = condom;
@@ -211,7 +212,7 @@ public class CondomContext extends ContextWrapper {
 		mContentResolver = new Lazy<ContentResolver>() { @Override protected ContentResolver create() {
 			return new CondomContentResolver(base, base.getContentResolver());
 		}};
-		TAG = CondomCore.buildTag("Condom", "Condom.", tag);
+		TAG = CondomCore.buildLogTag("Condom", "Condom.", tag);
 	}
 
 	CondomCore mCondom;
@@ -316,10 +317,10 @@ public class CondomContext extends ContextWrapper {
 
 		@Override public void attachBaseContext(final Context base) { super.attachBaseContext(base); }
 
-		CondomApplication(final CondomCore condom, final Application app, final @Nullable String tag) {
+		CondomApplication(final CondomCore condom, final Application app, final @Nullable @Size(max=13) String tag) {
 			mCondom = condom;
 			mApplication = app;
-			TAG = CondomCore.buildTag("CondomApp", "CondomApp.", tag);
+			TAG = CondomCore.buildLogTag("CondomApp", "CondomApp.", tag);
 		}
 
 		private final CondomCore mCondom;
