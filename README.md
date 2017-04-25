@@ -19,18 +19,26 @@ Project Condom is a thin library to wrap the naked `Context` in your Android pro
 2. Migration the initialization code of 3rd-party SDK.
 
    Most 3rd-party SDKs require explicit initialization with a `Context` instance, something like:
-
    ```
    XxxClient.init(context, ...);
    ```
 
    Just change the `context` paramter to `CondomContext.wrap(context)`, like this:
-
    ```
    XxxClient.init(CondomContext.wrap(context, "XxxSDK"), ...);
    ```
 
-That's it! Enjoy the protection.
+3. If the 3rd-party SDK contains its own components (`<activity>`, `<service>`, `<receiver>` or `<provider>`), they will not be running with `CondomContext`. To also prevent them from unwanted behaviors, `CondomProcess` is introduced to apply the process-level condom protection, assuming that those components are already isolated from your application process (with separate `android:process` specified). Add the following initialization code in the very beginning of your `Application.onCreate()`.
+   ```
+   public class MyApplication extends Application {
+
+     @Override public void onCreate() {
+       CondomProcess.installExceptDefaultProcess(this);
+       ...
+     }
+   }
+   ```
+That's all! Enjoy the pleasure with the confidence of protection.
 
 ---------------
 
