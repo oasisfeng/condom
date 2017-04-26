@@ -62,11 +62,12 @@ That's all! Enjoy the pleasure with the confidence of protection.
    compile 'com.oasisfeng.condom:library:1.1.1'
    ```
 
-   对于非Gradle工程，请[下载AAR文件](http://jcenter.bintray.com/com/oasisfeng/condom/library/)放进项目模块本地的 `libs` 路径中，并在工程的ProGuard配置文件中增加以下两行：（Gradle工程和不使用ProGuard的工程不需要这一步）
+   对于非Gradle工程，请[下载AAR文件](http://jcenter.bintray.com/com/oasisfeng/condom/library/)放进项目模块本地的 `libs` 路径中，并在工程的ProGuard配置文件中增加以下规则：（Gradle工程和不使用ProGuard的工程不需要这一步）
 
    ```
    -dontwarn android.content.IContentProvider
    -dontwarn android.content.ContentResolver
+   -keep class com.oasisfeng.condom.**
    ```
 
 2. 略微修改三方SDK的初始化代码。
