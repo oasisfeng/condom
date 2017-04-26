@@ -19,6 +19,7 @@ package com.oasisfeng.condom;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.support.annotation.Keep;
 import android.support.annotation.Nullable;
 
 /**
@@ -26,6 +27,7 @@ import android.support.annotation.Nullable;
  *
  * Created by Oasis on 2017/4/21.
  */
+@Keep
 public interface OutboundJudge {
 	/**
 	 * Judge the outbound request or query by intent and its target package, which may or may not be explicit in intent.

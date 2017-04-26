@@ -46,8 +46,6 @@ import com.oasisfeng.condom.util.Lazy;
 
 import java.util.List;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
 import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.ICE_CREAM_SANDWICH;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR1;
@@ -58,7 +56,7 @@ import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR2;
  *
  * Created by Oasis on 2017/3/25.
  */
-@ParametersAreNonnullByDefault @Keep
+@Keep
 public class CondomContext extends ContextWrapper {
 
 	public static @CheckResult CondomContext wrap(final Context base, final @Nullable @Size(max=13) String tag) {

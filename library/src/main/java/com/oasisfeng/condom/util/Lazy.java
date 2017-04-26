@@ -17,11 +17,15 @@
 
 package com.oasisfeng.condom.util;
 
+import android.support.annotation.Keep;
+import android.support.annotation.RestrictTo;
+
 /**
  * Helper class for lazy initialization.
  *
  * Created by Oasis on 2017/4/21.
  */
+@Keep @RestrictTo(RestrictTo.Scope.LIBRARY)
 public abstract class Lazy<T> {
 
 	protected abstract T create();

@@ -41,6 +41,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.UserHandle;
+import android.support.annotation.Keep;
 import android.support.annotation.RequiresApi;
 import android.support.annotation.RestrictTo;
 import android.view.Display;
@@ -66,7 +67,7 @@ import static android.os.Build.VERSION_CODES.N;
  *
  * Created by Oasis on 2017/3/26.
  */
-@RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+@Keep @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
 class PseudoContextWrapper extends Context {
 	final Context mBase;
 

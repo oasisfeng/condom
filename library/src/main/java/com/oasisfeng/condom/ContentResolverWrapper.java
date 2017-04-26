@@ -28,6 +28,7 @@ import android.database.ContentObserver;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.RemoteException;
+import android.support.annotation.Keep;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
@@ -45,7 +46,7 @@ import static android.os.Build.VERSION_CODES.N;
  *
  * Created by Oasis on 2017/4/11.
  */
-@RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+@Keep @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
 class ContentResolverWrapper extends ContentResolver {
 
 	@Override public IContentProvider acquireProvider(final Context c, final String name) { return mBase.acquireProvider(c, name); }

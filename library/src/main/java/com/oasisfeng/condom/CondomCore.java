@@ -27,6 +27,7 @@ import android.content.pm.ProviderInfo;
 import android.content.pm.ResolveInfo;
 import android.os.Process;
 import android.support.annotation.CheckResult;
+import android.support.annotation.Keep;
 import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
 import android.support.annotation.VisibleForTesting;
@@ -51,7 +52,7 @@ import static android.os.Build.VERSION_CODES.N;
  *
  * Created by Oasis on 2017/4/21.
  */
-@RestrictTo(RestrictTo.Scope.LIBRARY)
+@Keep @RestrictTo(RestrictTo.Scope.LIBRARY)
 class CondomCore {
 
 	interface WrappedValueProcedure<R> extends WrappedValueProcedureThrows<R, RuntimeException> {}

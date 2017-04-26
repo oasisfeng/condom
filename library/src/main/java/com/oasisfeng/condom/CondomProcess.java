@@ -31,6 +31,7 @@ import android.content.pm.ProviderInfo;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
 import android.os.Process;
+import android.support.annotation.Keep;
 import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
 import android.util.Log;
@@ -59,7 +60,7 @@ import static android.os.Build.VERSION_CODES.N_MR1;
  *
  * Created by Oasis on 2017/4/17.
  */
-@ParametersAreNonnullByDefault
+@ParametersAreNonnullByDefault @Keep
 public class CondomProcess {
 
 	/**

@@ -1,2 +1,3 @@
 -dontwarn android.content.IContentProvider
 -dontwarn android.content.ContentResolver
+-keep class com.oasisfeng.condom.**

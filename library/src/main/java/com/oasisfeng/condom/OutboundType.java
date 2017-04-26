@@ -21,12 +21,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.support.annotation.Keep;
 
 /**
  * The type of outbound request
  *
  * Created by Oasis on 2017/4/21.
  */
+@Keep
 public enum OutboundType {
 	/** @see Context#startService(Intent) */
 	START_SERVICE,
