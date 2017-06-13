@@ -42,6 +42,7 @@ import java.util.List;
 import static android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_BACKGROUND;
 import static android.content.Context.ACTIVITY_SERVICE;
 import static android.content.pm.ApplicationInfo.FLAG_STOPPED;
+import static android.content.pm.ApplicationInfo.FLAG_SYSTEM;
 import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.HONEYCOMB_MR1;
 import static android.os.Build.VERSION_CODES.LOLLIPOP_MR1;
@@ -154,7 +155,7 @@ class CondomCore {
 		if (provider == null) return false;
 		if (mBase.getPackageName().equals(provider.packageName)) return true;
 		if (shouldBlockRequestTarget(OutboundType.CONTENT, null, provider.packageName)) return mDryRun;
-		if (SDK_INT >= HONEYCOMB_MR1 && mExcludeStoppedPackages && (provider.applicationInfo.flags & FLAG_STOPPED) != 0) return mDryRun;
+		if (SDK_INT >= HONEYCOMB_MR1 && mExcludeStoppedPackages && (provider.applicationInfo.flags & (FLAG_SYSTEM | FLAG_STOPPED)) == FLAG_STOPPED) return mDryRun;
 		return true;
 	}
 
