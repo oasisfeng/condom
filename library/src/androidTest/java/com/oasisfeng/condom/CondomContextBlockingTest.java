@@ -22,6 +22,8 @@ import android.annotation.TargetApi;
 import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
+import android.content.ContentProvider;
+import android.content.ContentValues;
 import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.ServiceConnection;
@@ -32,12 +34,15 @@ import android.content.pm.PackageManager;
 import android.content.pm.ProviderInfo;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.support.annotation.CallSuper;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.test.InstrumentationRegistry;
 
@@ -157,13 +162,30 @@ public class CondomContextBlockingTest {
 		final String dry_android_id = Settings.System.getString(dry_condom.getContentResolver(), Settings.System.ANDROID_ID);
 		assertEquals(android_id, dry_android_id);
 
-		// Prevent stopped package
 		context.mTestingStoppedProvider = true;
-		assertNull(condom.getPackageManager().resolveContentProvider(Settings.AUTHORITY, 0));
+		// Prevent stopped packages,
+		assertNull(condom.getPackageManager().resolveContentProvider(TEST_AUTHORITY, 0));
+		assertNotNull(dry_condom.getPackageManager().resolveContentProvider(TEST_AUTHORITY, 0));
+		assertNull(condom.getContentResolver().acquireContentProviderClient(TEST_CONTENT_URI));
+		assertNotNull(dry_condom.getContentResolver().acquireContentProviderClient(TEST_CONTENT_URI));
+
+		// Providers in system package should not be blocked.
+		assertNotNull(condom.getPackageManager().resolveContentProvider(Settings.AUTHORITY, 0));
 		assertNotNull(dry_condom.getPackageManager().resolveContentProvider(Settings.AUTHORITY, 0));
-		assertNull(condom.getContentResolver().acquireContentProviderClient(Settings.System.CONTENT_URI));
+		assertNotNull(condom.getContentResolver().acquireContentProviderClient(Settings.System.CONTENT_URI));
 		assertNotNull(dry_condom.getContentResolver().acquireContentProviderClient(Settings.System.CONTENT_URI));
 		context.mTestingStoppedProvider = false;
+	}
+	private static final String TEST_AUTHORITY = "com.oasisfeng.condom.test";
+	private static final Uri TEST_CONTENT_URI = Uri.parse("content://" + TEST_AUTHORITY + "/");
+
+	public static class TestProvider extends ContentProvider {
+		@Override public boolean onCreate() { return true; }
+		@Nullable @Override public Cursor query(@NonNull final Uri uri, @Nullable final String[] strings, @Nullable final String s, @Nullable final String[] strings1, @Nullable final String s1) { return null; }
+		@Nullable @Override public String getType(@NonNull final Uri uri) { return null; }
+		@Nullable @Override public Uri insert(@NonNull final Uri uri, @Nullable final ContentValues contentValues) { return null; }
+		@Override public int delete(@NonNull final Uri uri, @Nullable final String s, @Nullable final String[] strings) { return 0; }
+		@Override public int update(@NonNull final Uri uri, @Nullable final ContentValues contentValues, @Nullable final String s, @Nullable final String[] strings) { return 0; }
 	}
 
 	@Test public void testOutboundJudge() {
@@ -355,7 +377,10 @@ public class CondomContextBlockingTest {
 
 				@Override public ProviderInfo resolveContentProvider(final String name, final int flags) {
 					final ProviderInfo info = super.resolveContentProvider(name, flags);
-					if (mTestingStoppedProvider) info.applicationInfo.flags |= ApplicationInfo.FLAG_STOPPED;
+					if (info != null && mTestingStoppedProvider) {
+						if (getPackageName().equals(info.packageName)) info.packageName += ".dummy";	// To simulate a package other than current one.
+						info.applicationInfo.flags |= ApplicationInfo.FLAG_STOPPED;
+					}
 					return info;
 				}
 
