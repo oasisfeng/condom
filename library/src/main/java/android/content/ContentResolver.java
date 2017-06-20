@@ -48,7 +48,7 @@ public abstract class ContentResolver {
 	public abstract void unstableProviderDied(IContentProvider icp);
 	public void appNotRespondingViaProvider(final IContentProvider icp) { throw new UnsupportedOperationException("appNotRespondingViaProvider"); }
 
-	/* Pure stubs */
+	/* Pure stubs without final and static methods */
 
 	public ContentResolver(Context context) {
 		throw new RuntimeException("Stub!");

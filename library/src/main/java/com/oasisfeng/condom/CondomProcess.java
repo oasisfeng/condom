@@ -46,8 +46,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
 import static android.content.pm.PackageManager.GET_ACTIVITIES;
 import static android.content.pm.PackageManager.GET_PROVIDERS;
 import static android.content.pm.PackageManager.GET_RECEIVERS;
@@ -60,7 +58,7 @@ import static android.os.Build.VERSION_CODES.N_MR1;
  *
  * Created by Oasis on 2017/4/17.
  */
-@ParametersAreNonnullByDefault @Keep
+@Keep
 public class CondomProcess {
 
 	/**
