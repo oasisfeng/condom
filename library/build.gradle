@@ -29,12 +29,6 @@ android {
     }
 }
 
-android.libraryVariants.all { variant ->
-    String taskName = String.format("remove%sStubClasses", variant.name.capitalize())
-    task "${taskName}" << { delete "${buildDir}/intermediates/classes/${variant.name}" + "/android" }
-    variant.processJavaResources.dependsOn(taskName)
-}
-
 dependencies {
     compile 'com.google.code.findbugs:jsr305:3.0.1'
     compile 'com.android.support:support-annotations:25.3.1'
@@ -43,3 +37,39 @@ dependencies {
 
     testCompile 'junit:junit:4.12'
 }
+
+android.libraryVariants.all { variant ->
+    String taskName = String.format("remove%sStubClasses", variant.name.capitalize())
+    task "${taskName}" {
+        doLast { delete "${buildDir}/intermediates/classes/${variant.name}" + "/android" }
+    }
+    variant.processJavaResources.dependsOn(taskName)
+}
+
+task sourcesJar(type: Jar) {
+    from android.sourceSets.main.java.srcDirs
+    classifier = 'sources'
+}
+
+task javadoc(type: Javadoc) {
+    options.encoding = 'UTF-8'
+    options.charSet = 'UTF-8'
+    failOnError false
+    source = android.sourceSets.main.java.srcDirs
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator)) + configurations.compile
+
+    exclude "com/oasisfeng/condom/util/**.java"
+    exclude "android/**.java"
+}
+
+task javadocJar(type: Jar, dependsOn: 'javadoc') {
+    from javadoc
+    classifier = 'javadoc'
+}
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}
+
+if (file('deploy.gradle').exists()) apply from: 'deploy.gradle'
