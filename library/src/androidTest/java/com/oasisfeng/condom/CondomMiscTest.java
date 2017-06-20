@@ -28,16 +28,22 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
 import android.os.IBinder;
+import android.os.Process;
+import android.os.UserHandle;
 import android.support.test.InstrumentationRegistry;
+import android.util.DisplayMetrics;
 import android.util.EventLog;
 
 import org.junit.Test;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import static android.os.Build.VERSION.SDK_INT;
+import static android.os.Build.VERSION_CODES.LOLLIPOP;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertTrue;
 
@@ -47,6 +53,14 @@ import static junit.framework.Assert.assertTrue;
  * Created by Oasis on 2017/4/10.
  */
 public class CondomMiscTest {
+
+	@Test public void testHiddenApi() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+		final Object uid = PackageManager.class.getMethod("getUidForSharedUser", String.class).invoke(condom.getPackageManager(),"android.uid.system");
+		assertEquals(1000, (int) uid);
+		// This hidden API is used by some 3rd-party libraries, as reported in issue #9 on GitHub.
+		if (SDK_INT >= LOLLIPOP) PackageManager.class.getMethod("getUserBadgeForDensity", UserHandle.class, int.class)
+				.invoke(condom.getPackageManager(), Process.myUserHandle(), DisplayMetrics.DENSITY_DEFAULT);
+	}
 
 	@Test public void testEventLog() throws IOException {
 		readNewEvents(CondomCore.CondomEvent.CONCERN);
@@ -181,7 +195,7 @@ public class CondomMiscTest {
 					final ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
 					final List<ActivityManager.RunningServiceInfo> services = am.getRunningServices(32);
 					if (services != null) for (final ActivityManager.RunningServiceInfo service : services) {
-						if (service.uid == android.os.Process.myUid()) continue;
+						if (service.uid == Process.myUid()) continue;
 						resolves.add(buildResolveInfo("bg.service.1", 999999999));		// Simulate a background UID.
 						resolves.add(buildResolveInfo("non.bg.service", service.uid));
 						resolves.add(buildResolveInfo("bg.service.2", 88888888));
