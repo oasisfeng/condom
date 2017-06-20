@@ -31,13 +31,7 @@ android {
 
 android.libraryVariants.all { variant ->
     String taskName = String.format("remove%sStubClasses", variant.name.capitalize())
-    task "${taskName}" << {
-        String path = "${buildDir}/intermediates/classes/${variant.name}"
-        file(path + "/android/content/ContentResolver.class").delete()
-        file(path + "/android/content/IContentProvider.class").delete()
-        file(path + "/android/content").delete()
-        file(path + "/android").delete()
-    }
+    task "${taskName}" << { delete "${buildDir}/intermediates/classes/${variant.name}" + "/android" }
     variant.processJavaResources.dependsOn(taskName)
 }
 
