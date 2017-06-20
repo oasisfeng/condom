@@ -5,11 +5,13 @@ android:
     - tools
     - platform-tools
     - tools # intentional, see travis-ci/docs-travis-ci-com#779
-    - build-tools-25.0.2
+    - build-tools-25.0.3
     - android-22 # For emulator to work
     - android-25
     - extra-android-m2repository
     - sys-img-armeabi-v7a-android-22
+  licenses:
+    - android-sdk-license-.+
 env:
   matrix:
     - ANDROID_SDKS=android-22,sysimg-22  ANDROID_TARGET=android-22  ANDROID_ABI=armeabi-v7a
