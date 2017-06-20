@@ -60,6 +60,7 @@ import static android.os.Build.VERSION_CODES.KITKAT;
 import static android.os.Build.VERSION_CODES.LOLLIPOP;
 import static android.os.Build.VERSION_CODES.M;
 import static android.os.Build.VERSION_CODES.N;
+import static android.os.Build.VERSION_CODES.O;
 
 /**
  * A package-private copy of {@link ContextWrapper}, to prevent potential leakage caused by {@link ContextWrapper#getBaseContext()}",
@@ -345,8 +346,16 @@ class PseudoContextWrapper extends Context {
 		return mBase.registerReceiver(receiver, filter);
 	}
 
+	@RequiresApi(O) @Override public Intent registerReceiver(final BroadcastReceiver receiver, final IntentFilter filter, final int flags) {
+		return mBase.registerReceiver(receiver, filter, flags);
+	}
+
 	@Override public Intent registerReceiver(BroadcastReceiver receiver, IntentFilter filter, String broadcastPermission, Handler scheduler) {
 		return mBase.registerReceiver(receiver, filter, broadcastPermission, scheduler);
+	}
+
+	@RequiresApi(O) @Override public Intent registerReceiver(final BroadcastReceiver receiver, final IntentFilter filter, final String broadcastPermission, final Handler scheduler, final int flags) {
+		return mBase.registerReceiver(receiver, filter, broadcastPermission, scheduler, flags);
 	}
 
 	@Override public void unregisterReceiver(BroadcastReceiver receiver) {
@@ -355,6 +364,10 @@ class PseudoContextWrapper extends Context {
 
 	@Override public ComponentName startService(Intent service) {
 		return mBase.startService(service);
+	}
+
+	@RequiresApi(O) @Override public ComponentName startForegroundService(final Intent service) {
+		return mBase.startForegroundService(service);
 	}
 
 	@Override public boolean stopService(Intent name) {
@@ -417,6 +430,10 @@ class PseudoContextWrapper extends Context {
 		mBase.revokeUriPermission(uri, modeFlags);
 	}
 
+	@RequiresApi(O) @Override public void revokeUriPermission(final String toPackage, final Uri uri, final int modeFlags) {
+		mBase.revokeUriPermission(toPackage, uri, modeFlags);
+	}
+
 	@Override public int checkUriPermission(Uri uri, int pid, int uid, int modeFlags) {
 		return mBase.checkUriPermission(uri, pid, uid, modeFlags);
 	}
@@ -451,6 +468,10 @@ class PseudoContextWrapper extends Context {
 
 	@Override public Context createPackageContext(String packageName, int flags) throws PackageManager.NameNotFoundException {
 		return mBase.createPackageContext(packageName, flags);
+	}
+
+	@RequiresApi(O) @Override public Context createContextForSplit(final String splitName) throws PackageManager.NameNotFoundException {
+		return mBase.createContextForSplit(splitName);
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public Context createConfigurationContext(Configuration overrideConfiguration) {

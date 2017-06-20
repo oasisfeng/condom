@@ -55,6 +55,7 @@ public abstract class PackageManager {
 	public static final int GET_DISABLED_UNTIL_USED_COMPONENTS = 0x00008000;
 
 	public abstract PackageInfo getPackageInfo(String packageName, int flags) throws NameNotFoundException;
+	public abstract PackageInfo getPackageInfo(final VersionedPackage versionedPackage, final int flags) throws NameNotFoundException;
 	/** @hide */// @RequiresPermission(Manifest.permission.INTERACT_ACROSS_USERS)
 	public abstract PackageInfo getPackageInfoAsUser(String packageName, int flags, int userId) throws NameNotFoundException;
 	public abstract String[] currentToCanonicalPackageNames(String[] names);
@@ -109,6 +110,12 @@ public abstract class PackageManager {
 	/** @hide */
 	public abstract int getUidForSharedUser(String sharedUserName) throws NameNotFoundException;
 	public abstract List<ApplicationInfo> getInstalledApplications(int flags);
+	public abstract boolean isInstantApp();
+	public abstract boolean isInstantApp(final String packageName);
+	public abstract int getInstantAppCookieMaxBytes();
+	public abstract byte[] getInstantAppCookie();
+	public abstract void clearInstantAppCookie();
+	public abstract void updateInstantAppCookie(final byte[] cookie);
 //	/** @hide */ @RequiresPermission(Manifest.permission.ACCESS_EPHEMERAL_APPS)
 //	public abstract List<EphemeralApplicationInfo> getEphemeralApplications();
 	/** @hide */
@@ -122,6 +129,8 @@ public abstract class PackageManager {
 	/** @hide */
 	public abstract boolean setEphemeralCookie( byte[] cookie);
 	public abstract String[] getSystemSharedLibraryNames();
+	public abstract List<SharedLibraryInfo> getSharedLibraries(final int flags);
+	public abstract ChangedPackages getChangedPackages(final int sequenceNumber);
 	/** @hide */
 	public abstract String getServicesSystemSharedLibraryPackageName();
 	/** @hide */
@@ -273,6 +282,8 @@ public abstract class PackageManager {
 	/** @hide */
 	public abstract boolean getApplicationHiddenSettingAsUser(String packageName, UserHandle userHandle);
 	public abstract boolean isSafeMode();
+	public abstract void setApplicationCategoryHint(final String packageName, final int categoryHint);
+	public abstract boolean canRequestPackageInstalls();
 	/** @hide */ //@SystemApi @RequiresPermission(Manifest.permission.OBSERVE_GRANT_REVOKE_PERMISSIONS)
 	public abstract void addOnPermissionsChangeListener(OnPermissionsChangedListener listener);
 	/** @hide */ //@SystemApi

@@ -24,6 +24,7 @@ import android.content.IntentFilter;
 import android.content.IntentSender;
 import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.ChangedPackages;
 import android.content.pm.FeatureInfo;
 import android.content.pm.IPackageDataObserver;
 import android.content.pm.IPackageDeleteObserver;
@@ -39,6 +40,8 @@ import android.content.pm.PermissionInfo;
 import android.content.pm.ProviderInfo;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
+import android.content.pm.SharedLibraryInfo;
+import android.content.pm.VersionedPackage;
 import android.content.res.Resources;
 import android.content.res.XmlResourceParser;
 import android.graphics.Rect;
@@ -63,6 +66,7 @@ import static android.os.Build.VERSION_CODES.KITKAT_WATCH;
 import static android.os.Build.VERSION_CODES.LOLLIPOP;
 import static android.os.Build.VERSION_CODES.M;
 import static android.os.Build.VERSION_CODES.N;
+import static android.os.Build.VERSION_CODES.O;
 
 /**
  * Delegation wrapper of {@link PackageManager}
@@ -76,6 +80,10 @@ class PackageManagerWrapper extends PackageManager {
 
 	@Override public PackageInfo getPackageInfo(String packageName, int flags) throws NameNotFoundException {
 		return mBase.getPackageInfo(packageName, flags);
+	}
+
+	@RequiresApi(O) @Override public PackageInfo getPackageInfo(VersionedPackage versionedPackage, int flags) throws NameNotFoundException {
+		return mBase.getPackageInfo(versionedPackage, flags);
 	}
 
 	/** @hide */
@@ -171,7 +179,7 @@ class PackageManagerWrapper extends PackageManager {
 	}
 
 	/** @hide */ //@SystemApi
-	 public List<PackageInfo> getInstalledPackagesAsUser(int flags, int userId) {
+	@Override public List<PackageInfo> getInstalledPackagesAsUser(int flags, int userId) {
 		return mBase.getInstalledPackagesAsUser(flags, userId);
 	}
 
@@ -201,22 +209,22 @@ class PackageManagerWrapper extends PackageManager {
 	}
 
 	/** @hide */ //@SystemApi
-	 public void grantRuntimePermission(String packageName, String permissionName, UserHandle user) {
+	@Override public void grantRuntimePermission(String packageName, String permissionName, UserHandle user) {
 		mBase.grantRuntimePermission(packageName, permissionName, user);
 	}
 
 	/** @hide */ //@SystemApi
-	 public void revokeRuntimePermission(String packageName, String permissionName, UserHandle user) {
+	@Override public void revokeRuntimePermission(String packageName, String permissionName, UserHandle user) {
 		mBase.revokeRuntimePermission(packageName, permissionName, user);
 	}
 
 	/** @hide */ //@SystemApi
-	 public int getPermissionFlags(String permissionName, String packageName, UserHandle user) {
+	@Override public int getPermissionFlags(String permissionName, String packageName, UserHandle user) {
 		return mBase.getPermissionFlags(permissionName, packageName, user);
 	}
 
 	/** @hide */ //@SystemApi
-	 public void updatePermissionFlags(String permissionName, String packageName, int flagMask, int flagValues, UserHandle user) {
+	@Override public void updatePermissionFlags(String permissionName, String packageName, int flagMask, int flagValues, UserHandle user) {
 		mBase.updatePermissionFlags(permissionName, packageName, flagMask, flagValues, user);
 	}
 
@@ -255,6 +263,30 @@ class PackageManagerWrapper extends PackageManager {
 		return mBase.getInstalledApplications(flags);
 	}
 
+	@RequiresApi(O) @Override public boolean isInstantApp() {
+		return mBase.isInstantApp();
+	}
+
+	@RequiresApi(O) @Override public boolean isInstantApp(String packageName) {
+		return mBase.isInstantApp(packageName);
+	}
+
+	@RequiresApi(O) @Override public int getInstantAppCookieMaxBytes() {
+		return mBase.getInstantAppCookieMaxBytes();
+	}
+
+	@RequiresApi(O) @Override public byte[] getInstantAppCookie() {
+		return mBase.getInstantAppCookie();
+	}
+
+	@RequiresApi(O) @Override public void clearInstantAppCookie() {
+		mBase.clearInstantAppCookie();
+	}
+
+	@RequiresApi(O) @Override public void updateInstantAppCookie(byte[] cookie) {
+		mBase.updateInstantAppCookie(cookie);
+	}
+
 	/** @hide */
 	@Override public Drawable getEphemeralApplicationIcon(String packageName) {
 		return mBase.getEphemeralApplicationIcon(packageName);
@@ -282,6 +314,14 @@ class PackageManagerWrapper extends PackageManager {
 
 	@Override public String[] getSystemSharedLibraryNames() {
 		return mBase.getSystemSharedLibraryNames();
+	}
+
+	@RequiresApi(O) @Override public List<SharedLibraryInfo> getSharedLibraries(int flags) {
+		return mBase.getSharedLibraries(flags);
+	}
+
+	@RequiresApi(O) @Override public ChangedPackages getChangedPackages(int sequenceNumber) {
+		return mBase.getChangedPackages(sequenceNumber);
 	}
 
 	/** @hide */
@@ -511,7 +551,8 @@ class PackageManagerWrapper extends PackageManager {
 	}
 
 	/** @hide */
-	@RequiresPermission(anyOf = { Manifest.permission.INSTALL_PACKAGES/*, Manifest.permission.INTERACT_ACROSS_USERS_FULL */}) public int installExistingPackageAsUser(String packageName, int userId) throws NameNotFoundException {
+	@RequiresPermission(anyOf = { Manifest.permission.INSTALL_PACKAGES/*, Manifest.permission.INTERACT_ACROSS_USERS_FULL */})
+	@Override public int installExistingPackageAsUser(String packageName, int userId) throws NameNotFoundException {
 		return mBase.installExistingPackageAsUser(packageName, userId);
 	}
 
@@ -557,7 +598,8 @@ class PackageManagerWrapper extends PackageManager {
 		mBase.setInstallerPackageName(targetPackage, installerPackageName);
 	}
 
-	@RequiresPermission(Manifest.permission.DELETE_PACKAGES) @Override public String getInstallerPackageName(String packageName) {
+	@RequiresPermission(Manifest.permission.DELETE_PACKAGES)
+	@Override public String getInstallerPackageName(String packageName) {
 		return mBase.getInstallerPackageName(packageName);
 	}
 
@@ -566,7 +608,8 @@ class PackageManagerWrapper extends PackageManager {
 		mBase.deletePackage(packageName, observer, flags);
 	}
 
-	/** @hide */ @RequiresPermission(Manifest.permission.DELETE_PACKAGES)
+	/** @hide */
+	@RequiresPermission(Manifest.permission.DELETE_PACKAGES)
 	@Override public void deletePackageAsUser(String packageName, IPackageDeleteObserver observer, int flags, int userId) {
 		mBase.deletePackageAsUser(packageName, observer, flags, userId);
 	}
@@ -587,12 +630,12 @@ class PackageManagerWrapper extends PackageManager {
 	}
 
 	/** @hide */
-	public void freeStorageAndNotify(long freeStorageSize, IPackageDataObserver observer) {
+	@Override public void freeStorageAndNotify(long freeStorageSize, IPackageDataObserver observer) {
 		mBase.freeStorageAndNotify(freeStorageSize, observer);
 	}
 
 	/** @hide */
-	public void freeStorageAndNotify(String volumeUuid, long freeStorageSize, IPackageDataObserver observer) {
+	@Override public void freeStorageAndNotify(String volumeUuid, long freeStorageSize, IPackageDataObserver observer) {
 		mBase.freeStorageAndNotify(volumeUuid, freeStorageSize, observer);
 	}
 
@@ -607,12 +650,12 @@ class PackageManagerWrapper extends PackageManager {
 	}
 
 	/** @hide */
-	public void getPackageSizeInfoAsUser(String packageName, int userId, IPackageStatsObserver observer) {
+	@Override public void getPackageSizeInfoAsUser(String packageName, int userId, IPackageStatsObserver observer) {
 		mBase.getPackageSizeInfoAsUser(packageName, userId, observer);
 	}
 
 	/** @hide */
-	public void getPackageSizeInfo(String packageName, IPackageStatsObserver observer) {
+	@Override public void getPackageSizeInfo(String packageName, IPackageStatsObserver observer) {
 		mBase.getPackageSizeInfo(packageName, observer);
 	}
 
@@ -638,12 +681,12 @@ class PackageManagerWrapper extends PackageManager {
 	}
 
 	/** @hide */
-	@Deprecated public void replacePreferredActivity(IntentFilter filter, int match, ComponentName[] set, ComponentName activity) {
+	@Override @Deprecated public void replacePreferredActivity(IntentFilter filter, int match, ComponentName[] set, ComponentName activity) {
 		mBase.replacePreferredActivity(filter, match, set, activity);
 	}
 
 	/** @hide */
-	@Deprecated public void replacePreferredActivityAsUser(IntentFilter filter, int match, ComponentName[] set, ComponentName activity, int userId) {
+	@Override @Deprecated public void replacePreferredActivityAsUser(IntentFilter filter, int match, ComponentName[] set, ComponentName activity, int userId) {
 		mBase.replacePreferredActivityAsUser(filter, match, set, activity, userId);
 	}
 
@@ -695,8 +738,16 @@ class PackageManagerWrapper extends PackageManager {
 		return mBase.isSafeMode();
 	}
 
+	@RequiresApi(O) @Override public void setApplicationCategoryHint(String packageName, int categoryHint) {
+		mBase.setApplicationCategoryHint(packageName, categoryHint);
+	}
+
 	@RequiresApi(LOLLIPOP) @Override @NonNull public PackageInstaller getPackageInstaller() {
 		return mBase.getPackageInstaller();
+	}
+
+	@RequiresApi(O) @Override public boolean canRequestPackageInstalls() {
+		return mBase.canRequestPackageInstalls();
 	}
 
 	/** @hide */ //@SystemApi
