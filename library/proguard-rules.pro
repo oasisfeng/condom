@@ -1,4 +1,9 @@
 -dontwarn android.content.IContentProvider
 -dontwarn android.content.ContentResolver
 -dontwarn android.content.pm.PackageManager
+-dontwarn android.content.pm.PackageManager$**
+-dontwarn android.content.pm.IPackageDeleteObserver
+-dontwarn android.content.pm.IPackageDataObserver
+-dontwarn android.content.pm.IPackageStatsObserver
+-dontwarn android.content.pm.KeySet
 -keep class com.oasisfeng.condom.**
