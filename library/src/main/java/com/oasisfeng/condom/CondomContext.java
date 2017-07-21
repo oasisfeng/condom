@@ -50,6 +50,7 @@ import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.ICE_CREAM_SANDWICH;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR1;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR2;
+import static android.os.Build.VERSION_CODES.O;
 
 /**
  * The condom-style {@link ContextWrapper} to prevent unwanted behaviors going through.
@@ -98,7 +99,7 @@ public class CondomContext extends ContextWrapper {
 	@Deprecated public CondomContext preventBroadcastToBackgroundPackages(final boolean prevent_or_not) { mCondom.mExcludeBackgroundReceivers = prevent_or_not; return this; }
 
 	/** @deprecated Use {@link CondomOptions} instead */
-	@Deprecated public CondomContext preventServiceInBackgroundPackages(final boolean prevent_or_not) { mCondom.mExcludeBackgroundServices = prevent_or_not; return this; }
+	@Deprecated public CondomContext preventServiceInBackgroundPackages(final boolean prevent_or_not) { if (SDK_INT < O) mCondom.mExcludeBackgroundServices = prevent_or_not; return this; }
 
 	/* ****** Hooked Context APIs ****** */
 

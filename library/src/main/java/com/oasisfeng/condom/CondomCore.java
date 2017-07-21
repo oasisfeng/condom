@@ -41,12 +41,12 @@ import java.util.List;
 
 import static android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_BACKGROUND;
 import static android.content.Context.ACTIVITY_SERVICE;
-import static android.content.pm.ApplicationInfo.FLAG_STOPPED;
 import static android.content.pm.ApplicationInfo.FLAG_SYSTEM;
 import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.HONEYCOMB_MR1;
 import static android.os.Build.VERSION_CODES.LOLLIPOP_MR1;
 import static android.os.Build.VERSION_CODES.N;
+import static android.os.Build.VERSION_CODES.O;
 
 /**
  * The shared functionality for condom wrappers.
@@ -69,6 +69,7 @@ class CondomCore {
 		proceed(OutboundType.BROADCAST, intent, null, procedure);
 	}
 
+	@SuppressWarnings("TypeParameterHidesVisibleType")
 	@CheckResult <R, T extends Throwable> R proceed(final OutboundType type, final Intent intent, final @Nullable R negative_value,
 													final CondomCore.WrappedValueProcedureThrows<R, T> procedure) throws T {
 		final String target_pkg = getTargetPackage(intent);
@@ -155,7 +156,9 @@ class CondomCore {
 		if (provider == null) return false;
 		if (mBase.getPackageName().equals(provider.packageName)) return true;
 		if (shouldBlockRequestTarget(OutboundType.CONTENT, null, provider.packageName)) return mDryRun;
-		if (SDK_INT >= HONEYCOMB_MR1 && mExcludeStoppedPackages && (provider.applicationInfo.flags & (FLAG_SYSTEM | FLAG_STOPPED)) == FLAG_STOPPED) return mDryRun;
+		//noinspection SimplifiableIfStatement
+		if (SDK_INT >= HONEYCOMB_MR1 && mExcludeStoppedPackages
+				&& (provider.applicationInfo.flags & (FLAG_SYSTEM | ApplicationInfo.FLAG_STOPPED)) == ApplicationInfo.FLAG_STOPPED) return mDryRun;
 		return true;
 	}
 
@@ -202,7 +205,7 @@ class CondomCore {
 		mBase = base;
 		DEBUG = (base.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
 		mExcludeBackgroundReceivers = options.mExcludeBackgroundReceivers;
-		mExcludeBackgroundServices = options.mExcludeBackgroundServices;
+		mExcludeBackgroundServices = SDK_INT < O && options.mExcludeBackgroundServices;
 		mOutboundJudge = options.mOutboundJudge;
 		mDryRun = options.mDryRun;
 		if (mDryRun) Log.w(TAG, "Start dry-run mode, no outbound requests will be blocked actually, despite later stated in log.");
@@ -242,12 +245,12 @@ class CondomCore {
 					if (running_service.pid != 0 && running_service.uid == uid)	// Same UID does not guarantee same process. This is spared intentionally.
 						return true;	// Only running process is qualified, although getRunningServices() may not include all running app processes.
 			}
-			return false;
+			return false;	// Fallback: Always treat as background app, since app with same UID will not reach here.
 		}
 
 		BackgroundUidFilter() {
 			if (SDK_INT >= LOLLIPOP_MR1) {		// getRunningAppProcesses() is limited on Android 5.1+.
-				running_services = ((ActivityManager) mBase.getSystemService(ACTIVITY_SERVICE)).getRunningServices(32);	// Too many services are never healthy, thus ignored intentionally.
+				running_services = ((ActivityManager) mBase.getSystemService(ACTIVITY_SERVICE)).getRunningServices(64);	// Too many services are never healthy, thus ignored intentionally.
 				running_processes = null;
 			} else {
 				running_services = null;
