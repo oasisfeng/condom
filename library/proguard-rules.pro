@@ -1,9 +1,6 @@
--dontwarn android.content.IContentProvider
--dontwarn android.content.ContentResolver
--dontwarn android.content.pm.PackageManager
--dontwarn android.content.pm.PackageManager$**
--dontwarn android.content.pm.IPackageDeleteObserver
--dontwarn android.content.pm.IPackageDataObserver
--dontwarn android.content.pm.IPackageStatsObserver
--dontwarn android.content.pm.KeySet
 -keep class com.oasisfeng.condom.**
+
+# The following classes reference non-public APIs in Android SDK
+-dontwarn com.oasisfeng.condom.CondomContext$CondomContentResolver
+-dontwarn com.oasisfeng.condom.ContentResolverWrapper
+-dontwarn com.oasisfeng.condom.PackageManagerWrapper
