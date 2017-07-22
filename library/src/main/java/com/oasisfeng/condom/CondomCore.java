@@ -208,10 +208,11 @@ class CondomCore {
 		mExcludeBackgroundServices = SDK_INT < O && options.mExcludeBackgroundServices;
 		mOutboundJudge = options.mOutboundJudge;
 		mDryRun = options.mDryRun;
+		mKits = options.mKits;
 		if (mDryRun) Log.w(TAG, "Start dry-run mode, no outbound requests will be blocked actually, despite later stated in log.");
 	}
 
-	final Context mBase;
+	final Context mBase;	// The real Context
 	final boolean DEBUG;
 
 	boolean mDryRun;
@@ -219,9 +220,15 @@ class CondomCore {
 	boolean mExcludeStoppedPackages = true;
 	boolean mExcludeBackgroundReceivers;
 	boolean mExcludeBackgroundServices;
+	final List<CondomKit> mKits;
 
 	private static final int EVENT_TAG = "Condom".hashCode();
 	private static final String TAG = "Condom";
+
+	interface CondomKitManager extends CondomKit.CondomKitRegistry {
+		boolean shouldSpoofPermission(final String permission);
+		Object getSystemService(final Context context, final String name);
+	}
 
 	/**
 	 * If set, the broadcast will never go to manifest receivers in background (cached

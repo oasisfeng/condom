@@ -53,6 +53,8 @@ public abstract class PackageManager {
 	public static final int GET_UNINSTALLED_PACKAGES = 0x00002000;
 	@Deprecated
 	public static final int GET_DISABLED_UNTIL_USED_COMPONENTS = 0x00008000;
+	public static final int PERMISSION_GRANTED = 0;
+	public static final int PERMISSION_DENIED = -1;
 
 	public abstract PackageInfo getPackageInfo(String packageName, int flags) throws NameNotFoundException;
 	public abstract PackageInfo getPackageInfo(final VersionedPackage versionedPackage, final int flags) throws NameNotFoundException;

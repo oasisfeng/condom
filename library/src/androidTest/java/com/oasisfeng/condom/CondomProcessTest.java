@@ -32,6 +32,8 @@ import android.provider.Settings;
 import android.support.annotation.Nullable;
 import android.support.test.InstrumentationRegistry;
 
+import com.oasisfeng.condom.kit.NullDeviceIdKit;
+
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -49,6 +51,7 @@ import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.assertTrue;
+import static junit.framework.Assert.fail;
 
 @ParametersAreNonnullByDefault
 public class CondomProcessTest {
@@ -139,7 +142,13 @@ public class CondomProcessTest {
 		mIntent = null;
 	}
 
-	@BeforeClass public static void checkInstallation() throws NoSuchFieldException, IllegalAccessException, ClassNotFoundException, NoSuchMethodException, InvocationTargetException {
+	@BeforeClass public static void checkInstallation() throws NoSuchFieldException, IllegalAccessException, ClassNotFoundException, NoSuchMethodException, InvocationTargetException, InstantiationException {
+		try {
+			CondomProcess.installExcept(((Application) InstrumentationRegistry.getTargetContext().getApplicationContext()),
+					new CondomOptions().addKit(new NullDeviceIdKit()), "");
+			fail("CondomKit is incompatible with CondomProcess");
+		} catch (final IllegalArgumentException ignored) {}
+
 		// Install in default process intentionally, since test cases cannot run in secondary process.
 		CondomProcess.installExcept(((Application) InstrumentationRegistry.getTargetContext().getApplicationContext()), new CondomOptions(), "");
 

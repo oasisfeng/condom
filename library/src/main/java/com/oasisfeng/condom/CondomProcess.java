@@ -76,6 +76,7 @@ public class CondomProcess {
 	 * <p>This method must be called in {@link Application#onCreate()} to eliminate potential leakage.
 	 */
 	public static void installExceptDefaultProcess(final Application app, final CondomOptions options) {
+		validateCondomOptions(options);
 		final String current_process_name = getProcessName(app);
 		if (current_process_name == null) return;
 		final String default_process_name = app.getApplicationInfo().processName;
@@ -91,6 +92,7 @@ public class CondomProcess {
 	 */
 	public static void installExcept(final Application app, final CondomOptions options, final String... process_names) {
 		if (process_names.length == 0) throw new IllegalArgumentException("At lease one process name must be specified");
+		validateCondomOptions(options);
 		final String current_process_name = getProcessName(app);
 		if (current_process_name == null) return;
 		for (final String process_name : process_names)
@@ -100,6 +102,12 @@ public class CondomProcess {
 			}
 
 		if ((app.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0) validateProcessNames(app, process_names);
+	}
+
+	private static void validateCondomOptions(final CondomOptions options) {
+		if (options.mKits != null && ! options.mKits.isEmpty())
+			throw new IllegalArgumentException("CondomKit is not yet compatible with CondomProcess. " +
+				"If you really need this, please submit a feature request with the use case.");
 	}
 
 	private static void validateProcessNames(final Application app, final String[] process_names) {

@@ -34,6 +34,7 @@ import android.content.pm.ProviderInfo;
 import android.content.pm.ResolveInfo;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Process;
 import android.os.UserHandle;
 import android.support.annotation.CheckResult;
 import android.support.annotation.Keep;
@@ -44,12 +45,18 @@ import android.util.Log;
 
 import com.oasisfeng.condom.util.Lazy;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
+import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.ICE_CREAM_SANDWICH;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR1;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR2;
+import static android.os.Build.VERSION_CODES.M;
 import static android.os.Build.VERSION_CODES.O;
 
 /**
@@ -187,6 +194,25 @@ public class CondomContext extends ContextWrapper {
 		}});
 	}
 
+	@Override public Object getSystemService(final String name) {
+		final Object service;
+		if (mKitManager != null && (service = mKitManager.getSystemService(mCondom.mBase, name)) != null)
+			return service;
+		return super.getSystemService(name);
+	}
+
+	@RequiresApi(M) @Override public int checkSelfPermission(final String permission) {
+		if (mKitManager != null && mKitManager.shouldSpoofPermission(permission))
+			return PERMISSION_GRANTED;
+		return super.checkSelfPermission(permission);
+	}
+
+	@Override public int checkPermission(final String permission, final int pid, final int uid) {
+		if (pid == Process.myPid() && uid == Process.myUid() && mKitManager != null && mKitManager.shouldSpoofPermission(permission))
+			return PERMISSION_GRANTED;
+		return super.checkPermission(permission, pid, uid);
+	}
+
 	@Override public ContentResolver getContentResolver() { return mContentResolver.get(); }
 	@Override public PackageManager getPackageManager() { return mPackageManager.get(); }
 	@Override public Context getApplicationContext() { return mApplicationContext; }
@@ -211,6 +237,12 @@ public class CondomContext extends ContextWrapper {
 		mContentResolver = new Lazy<ContentResolver>() { @Override protected ContentResolver create() {
 			return new CondomContentResolver(base, base.getContentResolver());
 		}};
+		final List<CondomKit> kits = condom.mKits;
+		if (kits != null && ! kits.isEmpty()) {
+			mKitManager = new KitManager();
+			for (final CondomKit kit : kits)
+				kit.onRegister(mKitManager);
+		} else mKitManager = null;
 		TAG = CondomCore.buildLogTag("Condom", "Condom.", tag);
 	}
 
@@ -219,9 +251,34 @@ public class CondomContext extends ContextWrapper {
 	private final Lazy<Context> mBaseContext;
 	private final Lazy<PackageManager> mPackageManager;
 	private final Lazy<ContentResolver> mContentResolver;
+	private final @Nullable CondomCore.CondomKitManager mKitManager;
 	final String TAG;
 
 	/* ****** Internal branch functionality ****** */
+
+	private static class KitManager implements CondomCore.CondomKitManager {
+
+		@Override public void addPermissionSpoof(final String permission) {
+			mSpoofPermissions.add(permission);
+		}
+
+		@Override public boolean shouldSpoofPermission(final String permission) {
+			return mSpoofPermissions.contains(permission);
+		}
+
+		@Override public void registerSystemService(final String name, final CondomKit.SystemServiceSupplier supplier) {
+			mSystemServiceSuppliers.put(name, supplier);
+		}
+
+		@Override public Object getSystemService(final Context context, final String name) {
+			final CondomKit.SystemServiceSupplier supplier = mSystemServiceSuppliers.get(name);
+			return supplier == null ? null : supplier.getSystemService(context, name);
+		}
+
+		private final Map<String, CondomKit.SystemServiceSupplier> mSystemServiceSuppliers = new HashMap<>();
+		private final Set<String> mSpoofPermissions = new HashSet<>();
+	}
+
 
 	class CondomPackageManager extends PackageManagerWrapper {
 

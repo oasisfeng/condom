@@ -22,6 +22,9 @@ import android.content.pm.PackageManager;
 import android.support.annotation.Keep;
 import android.support.annotation.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * The options for condom initialization.
  *
@@ -51,8 +54,15 @@ public class CondomOptions {
 	/** Set to dry-run mode to inspect the outbound wake-up only, no outbound requests will be actually blocked. */
 	public CondomOptions setDryRun(final boolean dry_run) { mDryRun = dry_run; return this; }
 
+	public CondomOptions addKit(final CondomKit kit) {
+		if (mKits == null) mKits = new ArrayList<>();
+		mKits.add(kit);
+		return this;
+	}
+
 	boolean mDryRun;
 	@Nullable OutboundJudge mOutboundJudge;
 	boolean mExcludeBackgroundReceivers = true;
 	boolean mExcludeBackgroundServices = true;
+	@Nullable List<CondomKit> mKits;
 }
