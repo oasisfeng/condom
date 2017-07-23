@@ -162,6 +162,7 @@ public class CondomProcess {
 			installCondomProcessPackageManager(condom);
 			Log.d(TAG, "Global condom is installed in current process");
 		} catch (final Exception e) {
+			condom.logConcern(TAG_INCOMPATIBILITY, e.getMessage());
 			Log.e(TAG, "Error installing global condom in current process", e);
 		}
 	}
@@ -216,6 +217,8 @@ public class CondomProcess {
 	}
 
 	private CondomProcess() {}
+
+	private static final String TAG_INCOMPATIBILITY = "Incompatibility";
 
 	/* ==================== */
 

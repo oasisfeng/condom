@@ -78,7 +78,11 @@ public class CondomContext extends ContextWrapper {
 	 * @param tag	the optional tag to distinguish between multiple instances of <code>CondomContext</code> used parallel.
 	 */
 	public static @CheckResult CondomContext wrap(final Context base, final @Nullable @Size(max=13) String tag, final CondomOptions options) {
-		if (base instanceof CondomContext) return (CondomContext) base;
+		if (base instanceof CondomContext) {
+			final CondomContext condom = ((CondomContext) base);
+			Log.w("Condom", "The wrapped context is already a CondomContext (tag: " + condom.TAG + "), tag and options specified here will be ignore.");
+			return condom;
+		}
 		final Context app_context = base.getApplicationContext();
 		final CondomCore condom = new CondomCore(base, options);
 		if (app_context instanceof Application) {	// The application context is indeed an Application, this should be preserved semantically.
