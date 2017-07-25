@@ -56,6 +56,12 @@ public class NullDeviceIdKit implements CondomKit, CondomKit.SystemServiceSuppli
 		@Override public String getImei(final int slotIndex) { return null; }
 		@Override public String getMeid() { return null; }
 		@Override public String getMeid(final int slotIndex) { return null; }
+		@Override public String getSimSerialNumber() { return null; }
+		@Override public String getSimSerialNumber(final int slotIndex) { return null; }
+		@Override public String getLine1Number() { return null; }
+		@Override public String getLine1Number(final int slotIndex) { return null; }
+		@Override public String getSubscriberId() { return null; }
+		@Override public String getSubscriberId(final int slotIndex) { return null; }
 
 		@Override public void listen(final PhoneStateListener listener, final int events) {
 			if ((events & UNSUPPORTED_LISTEN_EVENTS) != 0) {

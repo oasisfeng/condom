@@ -92,6 +92,9 @@ public class CondomKitTest {
 		assertNull(tm.getImei(0));
 		if (SDK_INT >= O) assertNull(tm.getMeid());
 		if (SDK_INT >= O) assertNull(tm.getMeid(0));
+		assertNull(tm.getSimSerialNumber());
+		assertNull(tm.getLine1Number());
+		assertNull(tm.getSubscriberId());
 	}
 
 	private static void assertPermission(final Context context, final String permission, final boolean granted) {

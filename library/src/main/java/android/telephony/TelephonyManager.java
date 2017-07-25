@@ -36,7 +36,7 @@ public class TelephonyManager {
 		throw new RuntimeException("Stub!");
 	}
 
-	public String getDeviceId(int slotIndex) {
+	public String getDeviceId(final int slotIndex) {
 		throw new RuntimeException("Stub!");
 	}
 
@@ -44,7 +44,7 @@ public class TelephonyManager {
 		throw new RuntimeException("Stub!");
 	}
 
-	public String getImei(int slotIndex) {
+	public String getImei(final int slotIndex) {
 		throw new RuntimeException("Stub!");
 	}
 
@@ -52,11 +52,35 @@ public class TelephonyManager {
 		throw new RuntimeException("Stub!");
 	}
 
-	@RequiresApi(O) public String getMeid(int slotIndex) {
+	@RequiresApi(O) public String getMeid(final int slotIndex) {
 		throw new RuntimeException("Stub!");
 	}
 
-	public void listen(PhoneStateListener listener, int events) {
+	public String getSimSerialNumber() {
+		throw new RuntimeException("Stub!");
+	}
+
+	public String getSimSerialNumber(final int subId) {
+		throw new RuntimeException("Stub!");
+	}
+
+	public String getLine1Number() {
+		throw new RuntimeException("Stub!");
+	}
+
+	public String getLine1Number(final int subId) {
+		throw new RuntimeException("Stub!");
+	}
+
+	public String getSubscriberId() {
+		throw new RuntimeException("Stub!");
+	}
+
+	public String getSubscriberId(final int subId) {
+		throw new RuntimeException("Stub!");
+	}
+
+	public void listen(final PhoneStateListener listener, final int events) {
 		throw new RuntimeException("Stub!");
 	}
 
