@@ -45,6 +45,8 @@ import android.util.Log;
 
 import com.oasisfeng.condom.util.Lazy;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -54,6 +56,7 @@ import java.util.Set;
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.ICE_CREAM_SANDWICH;
+import static android.os.Build.VERSION_CODES.JELLY_BEAN;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR1;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR2;
 import static android.os.Build.VERSION_CODES.M;
@@ -199,20 +202,24 @@ public class CondomContext extends ContextWrapper {
 	}
 
 	@Override public Object getSystemService(final String name) {
-		final Object service;
-		if (mKitManager != null && (service = mKitManager.getSystemService(mCondom.mBase, name)) != null)
-			return service;
+		if (mKitManager != null) {
+			final CondomKit.SystemServiceSupplier supplier = mKitManager.mSystemServiceSuppliers.get(name);
+			if (supplier != null) {
+				final Object service = supplier.getSystemService(mCondom.mBase, name);
+				if (service != null) return service;
+			}
+		}
 		return super.getSystemService(name);
 	}
 
 	@RequiresApi(M) @Override public int checkSelfPermission(final String permission) {
-		if (mKitManager != null && mKitManager.shouldSpoofPermission(permission))
+		if (mKitManager != null && mKitManager.mSpoofPermissions.contains(permission))
 			return PERMISSION_GRANTED;
 		return super.checkSelfPermission(permission);
 	}
 
 	@Override public int checkPermission(final String permission, final int pid, final int uid) {
-		if (pid == Process.myPid() && uid == Process.myUid() && mKitManager != null && mKitManager.shouldSpoofPermission(permission))
+		if (pid == Process.myPid() && uid == Process.myUid() && mKitManager != null && mKitManager.mSpoofPermissions.contains(permission))
 			return PERMISSION_GRANTED;
 		return super.checkPermission(permission, pid, uid);
 	}
@@ -243,7 +250,7 @@ public class CondomContext extends ContextWrapper {
 		}};
 		final List<CondomKit> kits = condom.mKits;
 		if (kits != null && ! kits.isEmpty()) {
-			mKitManager = new KitManager();
+			mKitManager = new CondomKitManager();
 			for (final CondomKit kit : kits)
 				kit.onRegister(mKitManager);
 		} else mKitManager = null;
@@ -255,28 +262,19 @@ public class CondomContext extends ContextWrapper {
 	private final Lazy<Context> mBaseContext;
 	private final Lazy<PackageManager> mPackageManager;
 	private final Lazy<ContentResolver> mContentResolver;
-	private final @Nullable CondomCore.CondomKitManager mKitManager;
+	private final @Nullable CondomKitManager mKitManager;
 	final String TAG;
 
 	/* ****** Internal branch functionality ****** */
 
-	private static class KitManager implements CondomCore.CondomKitManager {
+	private static class CondomKitManager implements CondomKit.CondomKitRegistry {
 
 		@Override public void addPermissionSpoof(final String permission) {
 			mSpoofPermissions.add(permission);
 		}
 
-		@Override public boolean shouldSpoofPermission(final String permission) {
-			return mSpoofPermissions.contains(permission);
-		}
-
 		@Override public void registerSystemService(final String name, final CondomKit.SystemServiceSupplier supplier) {
 			mSystemServiceSuppliers.put(name, supplier);
-		}
-
-		@Override public Object getSystemService(final Context context, final String name) {
-			final CondomKit.SystemServiceSupplier supplier = mSystemServiceSuppliers.get(name);
-			return supplier == null ? null : supplier.getSystemService(context, name);
 		}
 
 		private final Map<String, CondomKit.SystemServiceSupplier> mSystemServiceSuppliers = new HashMap<>();
@@ -328,6 +326,31 @@ public class CondomContext extends ContextWrapper {
 		@Override public List<ApplicationInfo> getInstalledApplications(final int flags) {
 			mCondom.logConcern(TAG, "PackageManager.getInstalledApplications");
 			return super.getInstalledApplications(flags);
+		}
+
+		@Override public PackageInfo getPackageInfo(final String pkg, final int flags) throws NameNotFoundException {
+			final PackageInfo info = super.getPackageInfo(pkg, flags);
+			if (info != null && (flags & PackageManager.GET_PERMISSIONS) != 0		// Caller is requesting permissions info about itself
+					&& mKitManager != null && ! mKitManager.mSpoofPermissions.isEmpty() && getPackageName().equals(pkg)) {
+				final List<String> requested_permissions = info.requestedPermissions == null ? new ArrayList<String>()
+						: new ArrayList<>(Arrays.asList(info.requestedPermissions));
+				final List<String> missing_permissions = new ArrayList<>(mKitManager.mSpoofPermissions);
+				missing_permissions.removeAll(requested_permissions);
+				if (! missing_permissions.isEmpty()) {
+					requested_permissions.addAll(missing_permissions);
+					info.requestedPermissions = requested_permissions.toArray(new String[requested_permissions.size()]);
+				}	// Even if all permissions to spoof are already requested, the permission granted state still requires amending.
+
+				if (SDK_INT >= JELLY_BEAN) {
+					final int[] req_permissions_flags = info.requestedPermissionsFlags == null ? new int[requested_permissions.size()]
+							: Arrays.copyOf(info.requestedPermissionsFlags, requested_permissions.size());
+					for (int i = 0; i < info.requestedPermissions.length; i++)
+						if (mKitManager.mSpoofPermissions.contains(info.requestedPermissions[i]))
+							req_permissions_flags[i] = PackageInfo.REQUESTED_PERMISSION_GRANTED;
+					info.requestedPermissionsFlags = req_permissions_flags;
+				}
+			}
+			return info;
 		}
 
 		CondomPackageManager(final PackageManager base) { super(base); }

@@ -47,11 +47,9 @@ public abstract class PackageManager {
 	public static final int GET_RECEIVERS               = 0x00000002;
 	public static final int GET_SERVICES                = 0x00000004;
 	public static final int GET_PROVIDERS               = 0x00000008;
-	@Deprecated
-	public static final int GET_DISABLED_COMPONENTS = 0x00000200;
-	@Deprecated
-	public static final int GET_UNINSTALLED_PACKAGES = 0x00002000;
-	@Deprecated
+	public static final int GET_DISABLED_COMPONENTS     = 0x00000200;
+	public static final int GET_PERMISSIONS             = 0x00001000;
+	public static final int GET_UNINSTALLED_PACKAGES    = 0x00002000;
 	public static final int GET_DISABLED_UNTIL_USED_COMPONENTS = 0x00008000;
 	public static final int PERMISSION_GRANTED = 0;
 	public static final int PERMISSION_DENIED = -1;

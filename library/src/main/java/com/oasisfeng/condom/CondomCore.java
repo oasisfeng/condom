@@ -225,11 +225,6 @@ class CondomCore {
 	private static final int EVENT_TAG = "Condom".hashCode();
 	private static final String TAG = "Condom";
 
-	interface CondomKitManager extends CondomKit.CondomKitRegistry {
-		boolean shouldSpoofPermission(final String permission);
-		Object getSystemService(final Context context, final String name);
-	}
-
 	/**
 	 * If set, the broadcast will never go to manifest receivers in background (cached
 	 * or not running) apps, regardless of whether that would be done by default.  By

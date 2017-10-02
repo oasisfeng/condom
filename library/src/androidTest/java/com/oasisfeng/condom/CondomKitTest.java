@@ -21,6 +21,9 @@ import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.ContextWrapper;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
@@ -34,6 +37,7 @@ import org.junit.Test;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
 
 import static android.Manifest.permission.ACCESS_COARSE_LOCATION;
 import static android.Manifest.permission.READ_PHONE_STATE;
@@ -45,8 +49,10 @@ import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.M;
 import static android.os.Build.VERSION_CODES.O;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * Test cases for {@link CondomKit}
@@ -55,7 +61,7 @@ import static org.junit.Assert.assertTrue;
  */
 public class CondomKitTest {
 
-	@Test public void testBasicKit() throws InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
+	@Test public void testBasicKit() throws ReflectiveOperationException, NameNotFoundException {
 		final ActivityManager am = createActivityManager(context);
 		final CondomOptions option = new CondomOptions().addKit(new CondomKit() { @Override public void onRegister(final CondomKitRegistry registry) {
 			registry.registerSystemService(Context.ACTIVITY_SERVICE, new SystemServiceSupplier() { @Override public Object getSystemService(final Context context, final String name) {
@@ -78,7 +84,7 @@ public class CondomKitTest {
 		assertPermission(condom.getApplicationContext(), WRITE_SECURE_SETTINGS, false);
 	}
 
-	@Test @SuppressLint("HardwareIds") public void testNullDeviceIdKit() {
+	@Test @SuppressLint("HardwareIds") public void testNullDeviceIdKit() throws NameNotFoundException {
 		final CondomContext condom = CondomContext.wrap(new ContextWrapper(context), "NullDeviceId",
 				new CondomOptions().addKit(new NullDeviceIdKit()));
 		final TelephonyManager tm = (TelephonyManager) condom.getSystemService(Context.TELEPHONY_SERVICE);
@@ -97,10 +103,20 @@ public class CondomKitTest {
 		assertNull(tm.getSubscriberId());
 	}
 
-	private static void assertPermission(final Context context, final String permission, final boolean granted) {
+	private static void assertPermission(final Context context, final String permission, final boolean granted) throws NameNotFoundException {
 		final int state = granted ? PERMISSION_GRANTED : PERMISSION_DENIED;
 		assertEquals(state, context.checkPermission(permission, Process.myPid(), Process.myUid()));
 		if (SDK_INT >= M) assertEquals(state, context.checkSelfPermission(permission));
+
+		final PackageInfo pkg_info = context.getPackageManager().getPackageInfo(context.getPackageName(), PackageManager.GET_PERMISSIONS);
+		if (! granted) return;
+		assertNotNull(pkg_info.requestedPermissions);
+		for (int i = 0; i < pkg_info.requestedPermissions.length; i++)
+			if (permission.equals(pkg_info.requestedPermissions[i])) {
+				assertEquals("Not granted: " + permission, PackageInfo.REQUESTED_PERMISSION_GRANTED, pkg_info.requestedPermissionsFlags[i]);
+				return;
+			}
+		fail(permission + " is not in requested permissions: " + Arrays.deepToString(pkg_info.requestedPermissions));
 	}
 
 	private static ActivityManager createActivityManager(final Context context) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
