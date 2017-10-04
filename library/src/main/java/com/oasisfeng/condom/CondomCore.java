@@ -17,14 +17,19 @@
 
 package com.oasisfeng.condom;
 
-import android.annotation.SuppressLint;
 import android.app.ActivityManager;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.ContextWrapper;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ReceiverCallNotAllowedException;
+import android.content.ServiceConnection;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.ProviderInfo;
 import android.content.pm.ResolveInfo;
+import android.os.Handler;
 import android.os.Process;
 import android.support.annotation.CheckResult;
 import android.support.annotation.Keep;
@@ -60,13 +65,15 @@ class CondomCore {
 
 	interface WrappedValueProcedureThrows<R, T extends Throwable> { R proceed() throws T; }
 
-	static abstract class WrappedProcedure implements WrappedValueProcedure<Void> {
+	static abstract class WrappedProcedure implements WrappedValueProcedure<Boolean> {
 		abstract void run();
-		@Override public Void proceed() { run(); return null; }
+		@Override public Boolean proceed() { run(); return null; }
 	}
 
-	@SuppressLint("CheckResult") void proceedBroadcast(final Intent intent, final CondomCore.WrappedProcedure procedure) {
-		proceed(OutboundType.BROADCAST, intent, null, procedure);
+	void proceedBroadcast(final Context context, final Intent intent, final WrappedValueProcedure<Boolean> procedure,
+						  final @Nullable BroadcastReceiver resultReceiver) {
+		if (proceed(OutboundType.BROADCAST, intent, Boolean.FALSE, procedure) == Boolean.FALSE && resultReceiver != null)
+			resultReceiver.onReceive(new ReceiverRestrictedContext(context), intent);
 	}
 
 	@SuppressWarnings("TypeParameterHidesVisibleType")
@@ -262,5 +269,32 @@ class CondomCore {
 
 		private final @Nullable List<ActivityManager.RunningServiceInfo> running_services;
 		private final @Nullable List<ActivityManager.RunningAppProcessInfo> running_processes;
+	}
+
+	class ReceiverRestrictedContext extends ContextWrapper {
+
+		ReceiverRestrictedContext(final Context base) {
+			super(base);
+		}
+
+		@Override public Intent registerReceiver(final BroadcastReceiver receiver, final IntentFilter filter) {
+			return registerReceiver(receiver, filter, null, null);
+		}
+
+		@Override public Intent registerReceiver(final BroadcastReceiver receiver, final IntentFilter filter, final String broadcastPermission, final Handler scheduler) {
+			if (receiver == null) {
+				// Allow retrieving current sticky broadcast; this is safe since we
+				// aren't actually registering a receiver.
+				return super.registerReceiver(null, filter, broadcastPermission, scheduler);
+			} else {
+				throw new ReceiverCallNotAllowedException(
+						"BroadcastReceiver components are not allowed to register to receive intents");
+			}
+		}
+
+		@Override public boolean bindService(final Intent service, final ServiceConnection conn, final int flags) {
+			throw new ReceiverCallNotAllowedException(
+					"BroadcastReceiver components are not allowed to bind to services");
+		}
 	}
 }

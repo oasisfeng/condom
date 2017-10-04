@@ -30,6 +30,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.ProviderInfo;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
+import android.os.Bundle;
 import android.os.Process;
 import android.support.annotation.Keep;
 import android.support.annotation.Nullable;
@@ -51,6 +52,7 @@ import static android.content.pm.PackageManager.GET_PROVIDERS;
 import static android.content.pm.PackageManager.GET_RECEIVERS;
 import static android.content.pm.PackageManager.GET_SERVICES;
 import static android.os.Build.VERSION.SDK_INT;
+import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR1;
 import static android.os.Build.VERSION_CODES.N_MR1;
 
 /**
@@ -139,6 +141,7 @@ public class CondomProcess {
 
 	private static @Nullable String getProcessName(final Context context) {
 		final ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+		if (am == null) return null;
 		final List<ActivityManager.RunningAppProcessInfo> processes;
 		try {
 			processes = am.getRunningAppProcesses();
@@ -190,15 +193,18 @@ public class CondomProcess {
 		final Object/* IActivityManager */am = Singleton_get.invoke(singleton);
 		if (am == null) throw new IllegalStateException("ActivityManagerNative.gDefault.get() returns null");
 
-		if (Proxy.isProxyClass(am.getClass()) && Proxy.getInvocationHandler(am) instanceof CondomProcessActivityManager) {
-			Log.d(TAG, "CondomActivityManager is already installed in this process.");
-			return;
+		final InvocationHandler handler;
+		if (Proxy.isProxyClass(am.getClass()) && (handler = Proxy.getInvocationHandler(am)) instanceof CondomProcessActivityManager) {
+			Log.w(TAG, "CondomActivityManager was already installed in this process.");
+			((CondomProcessActivityManager) handler).mCondom = condom;
+		} else {
+			final Object condom_am = Proxy.newProxyInstance(condom.mBase.getClassLoader(), new Class[] { IActivityManager },
+					new CondomProcessActivityManager(condom, am));
+			Singleton_mInstance.set(singleton, condom_am);
 		}
-
-		final Object condom_am = Proxy.newProxyInstance(condom.mBase.getClassLoader(), new Class[] {IActivityManager}, new CondomProcessActivityManager(condom, am));
-		Singleton_mInstance.set(singleton, condom_am);
 	}
 
+	/** */
 	@SuppressLint("PrivateApi") private static void installCondomProcessPackageManager(final CondomCore condom)
 			throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
 		final Class<?> ActivityThread = Class.forName("android.app.ActivityThread");
@@ -207,13 +213,15 @@ public class CondomProcess {
 		final Class<?> IPackageManager = Class.forName("android.content.pm.IPackageManager");
 
 		final Object pm = ActivityThread_sPackageManager.get(null);
-		if (Proxy.isProxyClass(pm.getClass()) && Proxy.getInvocationHandler(pm) instanceof CondomProcessPackageManager) {
-			Log.d(TAG, "CondomPackageManager is already installed in this process.");
-			return;
+		final InvocationHandler handler;
+		if (Proxy.isProxyClass(pm.getClass()) && (handler = Proxy.getInvocationHandler(pm)) instanceof CondomProcessPackageManager) {
+			Log.w(TAG, "CondomPackageManager was already installed in this process.");
+			((CondomProcessPackageManager) handler).mCondom = condom;
+		} else {
+			final Object condom_pm = Proxy.newProxyInstance(condom.mBase.getClassLoader(), new Class[] { IPackageManager },
+					new CondomProcessPackageManager(condom, pm));
+			ActivityThread_sPackageManager.set(null, condom_pm);
 		}
-
-		final Object condom_pm = Proxy.newProxyInstance(condom.mBase.getClassLoader(), new Class[] {IPackageManager}, new CondomProcessPackageManager(condom, pm));
-		ActivityThread_sPackageManager.set(null, condom_pm);
 	}
 
 	private CondomProcess() {}
@@ -225,15 +233,27 @@ public class CondomProcess {
 	@VisibleForTesting static class CondomProcessActivityManager extends CondomSystemService {
 
 		private Object proceed(final Object proxy, final Method method, final Object[] args) throws Exception {
-			final String method_name = method.getName(); final Intent intent;
+			final String method_name = method.getName(); final Intent intent; final int result;
 			switch (method_name) {
-			case "broadcastIntent":
-				return mCondom.proceed(OutboundType.BROADCAST, (Intent) args[1], 0/* ActivityManager.BROADCAST_SUCCESS */, new CondomCore.WrappedValueProcedureThrows<Integer, Exception>() { @Override public Integer proceed() throws Exception {
+			case "broadcastIntent":	// int broadcastIntent(IApplicationThread caller, Intent intent, String resolvedType, IIntentReceiver resultTo, int resultCode, String resultData, Bundle map, String/[23+] String[] requiredPermissions, [18+ int appOp], [23+ Bundle options], boolean serialized, boolean sticky, [16+ int userId]);
+				result = mCondom.proceed(OutboundType.BROADCAST, (Intent) args[1], Integer.MIN_VALUE, new CondomCore.WrappedValueProcedureThrows<Integer, Exception>() { @Override public Integer proceed() throws Exception {
 					return (Integer) CondomProcessActivityManager.super.invoke(proxy, method, args);
 				}});
+				final Object result_receiver = args[3];
+				if (result != Integer.MIN_VALUE) return result;
+				if (result_receiver == null) return 0/* ActivityManager.BROADCAST_SUCCESS */;
+				// Invoke the result receiver as if the ordered broadcast has been sent to no one, if the broadcast is blocked by condom.
+				final Method IIntentReceiver_performReceive = result_receiver.getClass().getMethod("performReceive", SDK_INT >= JELLY_BEAN_MR1
+				// void performReceive(Intent intent, int resultCode, String data, Bundle extras, boolean ordered, boolean sticky, [17+ int sendingUser])
+						? new Class[] { Intent.class, int.class, String.class, Bundle.class, boolean.class, boolean.class, int.class}
+						: new Class[] { Intent.class, int.class, String.class, Bundle.class, boolean.class, boolean.class });
+				IIntentReceiver_performReceive.invoke(result_receiver, SDK_INT >= JELLY_BEAN_MR1
+						? new Object[] { args[1], args[4], args[5], args[6], args[args.length - 3], args[args.length - 2], args[args.length - 1] }
+						: new Object[] { args[1], args[4], args[5], args[6], args[8], args[9] });
+				return 0/* ActivityManager.BROADCAST_SUCCESS */;
 			case "bindService":
 				intent = (Intent) args[2];
-				final Integer result = mCondom.proceed(OutboundType.BIND_SERVICE, intent, 0, new CondomCore.WrappedValueProcedureThrows<Integer, Exception>() { @Override public Integer proceed() throws Exception {
+				result = mCondom.proceed(OutboundType.BIND_SERVICE, intent, 0, new CondomCore.WrappedValueProcedureThrows<Integer, Exception>() { @Override public Integer proceed() throws Exception {
 					return (Integer) CondomProcessActivityManager.super.invoke(proxy, method, args);
 				}});	// Result: 0 - no match, >0 - succeed, <0 - SecurityException.
 				if (result > 0) mCondom.logIfOutboundPass(FULL_TAG, intent, CondomCore.getTargetPackage(intent), CondomCore.CondomEvent.BIND_PASS);
@@ -254,7 +274,8 @@ public class CondomProcess {
 			return super.invoke(proxy, method, args);
 		}
 
-		@Override public Object invoke(final Object proxy, final Method method, final Object[] args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+		@Override public Object invoke(final Object proxy, final Method method, final Object[] args)
+				throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
 			try {
 				return proceed(proxy, method, args);
 			} catch (final Exception e) {
@@ -265,7 +286,7 @@ public class CondomProcess {
 
 		CondomProcessActivityManager(final CondomCore condom, final Object am) { super (am, "IActivityManager.", condom.DEBUG); mCondom = condom; }
 
-		private final CondomCore mCondom;
+		private CondomCore mCondom;
 	}
 
 	@VisibleForTesting static class CondomProcessPackageManager extends CondomSystemService {
@@ -299,7 +320,8 @@ public class CondomProcess {
 
 					if (IPackageManager_queryIntentServices == null) {
 						mCondom.mBase.getPackageManager().queryIntentServices(DUMMY_INTENT, 0);
-						if (IPackageManager_queryIntentServices == null) throw new IllegalStateException("Failed to capture IPackageManager.queryIntentServices()");
+						if (IPackageManager_queryIntentServices == null)
+							throw new IllegalStateException("Failed to capture IPackageManager.queryIntentServices()");
 					}
 					final List<ResolveInfo> candidates = asList(CondomProcessPackageManager.super.invoke(proxy, IPackageManager_queryIntentServices, args));
 					return mCondom.filterCandidates(OutboundType.QUERY_SERVICES, intent.setFlags(original_intent_flags), candidates, FULL_TAG, false);
@@ -328,7 +350,8 @@ public class CondomProcess {
 			return (List<T>) ParceledListSlice_getList.invoke(list);
 		}
 
-		@Override public Object invoke(final Object proxy, final Method method, final Object[] args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+		@Override public Object invoke(final Object proxy, final Method method, final Object[] args)
+				throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
 			try {
 				return proceed(proxy, method, args);
 			} catch (final Exception e) {
@@ -338,14 +361,15 @@ public class CondomProcess {
 		}
 
 		CondomProcessPackageManager(final CondomCore condom, final Object pm) { super (pm, "IPackageManager.", condom.DEBUG); mCondom = condom; }
-		@VisibleForTesting final CondomCore mCondom;
+		@VisibleForTesting CondomCore mCondom;
 		private Method IPackageManager_queryIntentServices;
 		private Method ParceledListSlice_getList;
 	}
 
 	private static class CondomSystemService implements InvocationHandler {
 
-		@Override public Object invoke(final Object proxy, final Method method, final Object[] args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+		@Override public Object invoke(final Object proxy, final Method method, final Object[] args)
+				throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
 			if (DEBUG) Log.d(TAG, mServiceTag + method.getName() + (args == null ? "" : Arrays.toString(args)));
 			return method.invoke(mService, args);
 		}

@@ -134,71 +134,71 @@ public class CondomContext extends ContextWrapper {
 	}
 
 	@Override public void sendBroadcast(final Intent intent) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
+		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendBroadcast(intent);
-		}});
+		}}, null);
 	}
 
 	@Override public void sendBroadcast(final Intent intent, final String receiverPermission) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
+		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendBroadcast(intent, receiverPermission);
-		}});
+		}}, null);
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
+		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendBroadcastAsUser(intent, user);
-		}});
+		}}, null);
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
+		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendBroadcastAsUser(intent, user, receiverPermission);
-		}});
+		}}, null);
 	}
 
 	@Override public void sendOrderedBroadcast(final Intent intent, final String receiverPermission) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
+		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendOrderedBroadcast(intent, receiverPermission);
-		}});
+		}}, null);
 	}
 
 	@Override public void sendOrderedBroadcast(final Intent intent, final String receiverPermission, final BroadcastReceiver resultReceiver,
 											   final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
+		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendOrderedBroadcast(intent, receiverPermission, resultReceiver, scheduler, initialCode, initialData, initialExtras);
-		}});
+		}}, resultReceiver);
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendOrderedBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission, final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
+		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendOrderedBroadcastAsUser(intent, user, receiverPermission, resultReceiver, scheduler, initialCode, initialData, initialExtras);
-		}});
+		}}, resultReceiver);
 	}
 
 	@Override public void sendStickyBroadcast(final Intent intent) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
+		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendStickyBroadcast(intent);
-		}});
+		}}, null);
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendStickyBroadcastAsUser(final Intent intent, final UserHandle user) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
+		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendStickyBroadcastAsUser(intent, user);
-		}});
+		}}, null);
 	}
 
 	@Override public void sendStickyOrderedBroadcast(final Intent intent, final BroadcastReceiver resultReceiver, final Handler scheduler,
 													 final int initialCode, final String initialData, final Bundle initialExtras) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
+		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendStickyOrderedBroadcast(intent, resultReceiver, scheduler, initialCode, initialData, initialExtras);
-		}});
+		}}, resultReceiver);
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendStickyOrderedBroadcastAsUser(final Intent intent, final UserHandle user, final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
-		mCondom.proceedBroadcast(intent, new CondomCore.WrappedProcedure() { @Override public void run() {
+		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendStickyOrderedBroadcastAsUser(intent, user, resultReceiver, scheduler, initialCode, initialData, initialExtras);
-		}});
+		}}, resultReceiver);
 	}
 
 	@Override public Object getSystemService(final String name) {
