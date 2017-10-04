@@ -1,7 +1,24 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.oasisfeng.condom">
-    <application>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.oasisfeng.condom.test">
+
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
+
+    <instrumentation
+        android:name="android.support.test.runner.AndroidJUnitRunner"
+        android:functionalTest="false"
+        android:handleProfiling="false"
+        android:label="Tests for Project Condom"
+        android:targetPackage="com.oasisfeng.condom.test" />
+
+    <application android:name="com.oasisfeng.condom.simulation.TestApplication">
+
+        <uses-library android:name="android.test.runner" />
+
+        <service android:name="com.oasisfeng.condom.TestService" android:process=":test" />
+
         <provider
             android:authorities="com.oasisfeng.condom.test"
-            android:name=".CondomContextBlockingTest$TestProvider" />
+            android:name="com.oasisfeng.condom.CondomContextBlockingTest$TestProvider" />
+
     </application>
+
 </manifest>

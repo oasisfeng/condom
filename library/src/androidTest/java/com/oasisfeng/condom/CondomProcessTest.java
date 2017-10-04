@@ -17,15 +17,17 @@
 
 package com.oasisfeng.condom;
 
-import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.Application;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentProviderClient;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.os.IBinder;
 import android.provider.Settings;
@@ -33,16 +35,18 @@ import android.support.annotation.Nullable;
 import android.support.test.InstrumentationRegistry;
 
 import com.oasisfeng.condom.kit.NullDeviceIdKit;
+import com.oasisfeng.condom.simulation.TestApplication;
 
+import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Proxy;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
@@ -51,143 +55,190 @@ import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.assertTrue;
-import static junit.framework.Assert.fail;
+import static org.junit.Assert.fail;
 
 @ParametersAreNonnullByDefault
 public class CondomProcessTest {
 
 	@Test public void testBindService() {
-		sCondomProcessPackageManager.mCondom.mOutboundJudge = mBlockAllJudge;
-		final Intent intent = new Intent().setPackage("a.b.c");
+		runInSeparateProcess(new TestService.Procedure() { @Override public void run(final Context context) {
+			final Intent intent = new Intent(context, TestService.class);
+			final ServiceConnection connection = new ServiceConnection() {
+				@Override public void onServiceConnected(final ComponentName name, final IBinder service) {}
+				@Override public void onServiceDisconnected(final ComponentName name) {}
+			};
+			assertTrue("Test service is not properly setup.", context.bindService(intent, connection, Context.BIND_AUTO_CREATE));
+			context.unbindService(connection);
 
-		context().bindService(intent, SERVICE_CONNECTION, Context.BIND_AUTO_CREATE);
-		assertOutboundJudgeCalled(1);
-		assertNotNull(mIntent);
+			installCondomProcess(context, new CondomOptions().setOutboundJudge(sBlockAllJudge));
+
+			withFakeSelfPackageName(new Runnable() { @Override public void run() {
+				assertFalse(context.bindService(intent, connection, Context.BIND_AUTO_CREATE));
+			}});	// Block by outbound judge
+			context.unbindService(connection);
+		}});
 		// TODO: More cases
 	}
 
 	@Test public void testStartService() {
-		sCondomProcessPackageManager.mCondom.mOutboundJudge = mBlockAllJudge;
-		final Intent intent = new Intent().setPackage("a.b.c");
+		runInSeparateProcess(new TestService.Procedure() { @Override public void run(final Context context) {
+			final Intent intent = new Intent(context, TestService.class);
+			assertNotNull("Test service is not properly setup.", context.startService(intent));
+			assertTrue(context.stopService(intent));
 
-		context().startService(intent);
-		assertOutboundJudgeCalled(1);
-		assertNotNull(mIntent);
+			installCondomProcess(context, new CondomOptions().setOutboundJudge(sBlockAllJudge));
+
+			withFakeSelfPackageName(new Runnable() { @Override public void run() {
+				assertNull(context.startService(intent));
+			}});	// Block by outbound judge
+			assertTrue(context.stopService(intent));
+		}});
 		// TODO: More cases
 	}
 
+	private static final String ACTION_TEST = "TEST";
+
 	@Test public void testBroadcast() {
-		sCondomProcessPackageManager.mCondom.mOutboundJudge = mBlockAllJudge;
-		final Intent intent = new Intent();
+		runInSeparateProcess(new TestService.Procedure() { @Override public void run(final Context context) {
+			testOrderedBroadcast(context, new Intent(ACTION_TEST).setPackage(context.getPackageName()), true);
 
-		mIntent = null;
-		context().sendBroadcast(intent);
-		assertOutboundJudgeCalled(0);
-		assertNull(mIntent);
+			installCondomProcess(context, new CondomOptions().setOutboundJudge(sBlockAllJudge));
 
-		mIntent = null;
-		context().sendBroadcast(new Intent(intent.setPackage("a.b.c")));
-		assertOutboundJudgeCalled(1);
-		assertNotNull(mIntent);
-		assertTrue(mIntent.filterEquals(intent));
+			context.sendBroadcast(new Intent(ACTION_TEST).setPackage(context.getPackageName()));	// Ensure no exception
+
+			testOrderedBroadcast(context, new Intent(ACTION_TEST), true);
+			testOrderedBroadcast(context, new Intent(ACTION_TEST).setPackage(context.getPackageName()), true);	// Self targeted should always be allowed.
+			withFakeSelfPackageName(new Runnable() { @Override public void run() {
+				testOrderedBroadcast(context, new Intent(ACTION_TEST).setPackage(context.getPackageName()), false);
+			}});
+		}});
+	}
+
+	private static void testOrderedBroadcast(final Context context, final Intent intent, final boolean expected_pass) {
+		final BroadcastReceiver responder = new BroadcastReceiver() { @Override public void onReceive(final Context context, final Intent intent) {
+			setResultCode(Activity.RESULT_OK);
+		}};
+		if (intent.getAction() != null) context.registerReceiver(responder, new IntentFilter(intent.getAction()));
+
+		final CompletableFuture<Integer> future = new CompletableFuture<>();
+//		TestApplication.sEnablePackageNameFake = true;
+		context.sendOrderedBroadcast(intent, null, new BroadcastReceiver() { @Override public void onReceive(final Context context, final Intent intent) {
+			future.complete(getResultCode());
+		}}, null, Activity.RESULT_CANCELED, null, null);
+//		TestApplication.sEnablePackageNameFake = false;
+		final int result = waitForCompletion(future);
+		assertEquals(expected_pass ? Activity.RESULT_OK : Activity.RESULT_CANCELED, result);
+
+		if (intent.getAction() != null) context.unregisterReceiver(responder);
 	}
 
 	@Test public void testQuery() {
-		final Context context = context();
-		final Intent service_intent = new Intent("android.view.InputMethod").addFlags(Intent.FLAG_EXCLUDE_STOPPED_PACKAGES/* For consistency */);
-		final ResolveInfo service = context.getPackageManager().resolveService(service_intent, 0);
-		assertNotNull(service);
-		final List<ResolveInfo> services = context.getPackageManager().queryIntentServices(service_intent, 0);
-		assertNotNull(services);
-		assertFalse(services.isEmpty());
+		runInSeparateProcess(new TestService.Procedure() { @Override public void run(final Context context) {
+			installCondomProcess(context, new CondomOptions());		// Must be installed before the first call to Context.getPackageManager().
 
-		final List<ResolveInfo> receivers = context.getPackageManager().queryBroadcastReceivers(new Intent(Intent.ACTION_BOOT_COMPLETED), 0);
-		assertNotNull(receivers);
-		assertFalse(receivers.isEmpty());
+			final Intent service_intent = new Intent("android.view.InputMethod").addFlags(Intent.FLAG_EXCLUDE_STOPPED_PACKAGES/* For consistency */);
+			final ResolveInfo service = context.getPackageManager().resolveService(service_intent, 0);
+			Assume.assumeNotNull(service);
 
-		sCondomProcessPackageManager.mCondom.mOutboundJudge = mBlockAllJudge;
+			final List<ResolveInfo> services = context.getPackageManager().queryIntentServices(service_intent, 0);
+			assertNotNull(services);
+			assertFalse(services.isEmpty());
 
-		assertNull(context.getPackageManager().resolveService(service_intent, 0));
-		assertOutboundJudgeCalled(services.size());		// Outbound judge should have been called for each candidates.
-		List<ResolveInfo> result = context.getPackageManager().queryIntentServices(service_intent, 0);
-		assertTrue(result.isEmpty());
-		assertOutboundJudgeCalled(services.size());
+			final List<ResolveInfo> receivers = context.getPackageManager().queryBroadcastReceivers(new Intent(Intent.ACTION_BOOT_COMPLETED), 0);
+			assertNotNull(receivers);
+			assertFalse(receivers.isEmpty());
 
-		service_intent.setPackage(service.serviceInfo.packageName);
-		assertNull(context.getPackageManager().resolveService(service_intent, 0));
-		assertOutboundJudgeCalled(1);		// Only once for explicitly targeted intent
-		result = context.getPackageManager().queryIntentServices(service_intent, 0);
-		assertTrue(result.isEmpty());
-		assertOutboundJudgeCalled(1);
+			installCondomProcess(context, new CondomOptions().setOutboundJudge(sBlockAllJudge));
 
-		service_intent.setPackage(null);
+			assertNull(context.getPackageManager().resolveService(service_intent, 0));
+			List<ResolveInfo> result = context.getPackageManager().queryIntentServices(service_intent, 0);
+			assertTrue(result.isEmpty());
+
+			service_intent.setPackage(service.serviceInfo.packageName);
+			assertNull(context.getPackageManager().resolveService(service_intent, 0));
+			result = context.getPackageManager().queryIntentServices(service_intent, 0);
+			assertTrue(result.isEmpty());
+
+			service_intent.setPackage(null);
+		}});
 	}
 
 	@Test public void testProvider() {
-		final ContentResolver resolver = context().getContentResolver();
-		// Regular provider access
-		final String android_id = Settings.System.getString(resolver, Settings.System.ANDROID_ID);
-		assertNotNull(android_id);
-		final ContentProviderClient client = resolver.acquireContentProviderClient(Settings.AUTHORITY);
-		assertNotNull(client);
-		client.release();
+		runInSeparateProcess(new TestService.Procedure() { @Override public void run(final Context context) {
+			final ContentResolver resolver = context.getContentResolver();
+			// Regular provider access
+			final String android_id = Settings.Secure.getString(resolver, Settings.System.ANDROID_ID);
+			assertNotNull(android_id);
+			final ContentProviderClient client = resolver.acquireContentProviderClient(Settings.AUTHORITY);
+			assertNotNull(client);
+			client.release();
 
-		sCondomProcessPackageManager.mCondom.mOutboundJudge = mBlockAllJudge;
+			installCondomProcess(context, new CondomOptions().setOutboundJudge(sBlockAllJudge));
 
-		assertNull(resolver.acquireContentProviderClient("downloads"));
+			assertNull(resolver.acquireContentProviderClient("downloads"));
+		}});
 	}
 
-	@Before public void reset() {
-		sCondomProcessPackageManager.mCondom.mOutboundJudge = null;
-		mIntent = null;
+	@Test public void testCondomKitSetup() {
+		runInSeparateProcess(new TestService.Procedure() { @Override public void run(final Context context) {
+			try {
+				installCondomProcess(context, new CondomOptions().addKit(new NullDeviceIdKit()));
+				fail("CondomKit is incompatible with CondomProcess");
+			} catch (final IllegalArgumentException ignored) {}
+		}});
 	}
 
-	@BeforeClass public static void checkInstallation() throws NoSuchFieldException, IllegalAccessException, ClassNotFoundException, NoSuchMethodException, InvocationTargetException, InstantiationException {
+	@Before public void prepare() throws InterruptedException {		// Ensure the separate process is always cleanly started.
+		final Context context = context();
+		//noinspection ConstantConditions
+		((ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE)).killBackgroundProcesses(context().getPackageName());
+		if (! context.bindService(new Intent(context, TestService.class), mServiceConnection, Context.BIND_AUTO_CREATE))
+			throw new IllegalStateException("TestService is not properly setup");
+		while (mServiceBinder == null) Thread.sleep(20);
+	}
+
+	@After public void release() {
+		context().unbindService(mServiceConnection);
+	}
+
+	private final ServiceConnection mServiceConnection = new ServiceConnection() {
+		@Override public void onServiceConnected(final ComponentName name, final IBinder service) {
+			mServiceBinder = service;
+		}
+
+		@Override public void onServiceDisconnected(final ComponentName name) {
+			mServiceBinder = null;
+		}
+	};
+
+	private void runInSeparateProcess(final TestService.Procedure procedure) {
+		//noinspection ConstantConditions
+		TestService.invokeService(mServiceBinder, procedure);
+	}
+
+	private static void installCondomProcess(final Context context, final CondomOptions options) {
+		CondomProcess.installExceptDefaultProcess((Application) context.getApplicationContext(), options);
+	}
+
+	private static void withFakeSelfPackageName(final Runnable runnable) {
+		TestApplication.sEnablePackageNameFake = true;
+		runnable.run();
+		TestApplication.sEnablePackageNameFake = false;
+	}
+
+	private static <T> T waitForCompletion(final CompletableFuture<T> future) {
 		try {
-			CondomProcess.installExcept(((Application) InstrumentationRegistry.getTargetContext().getApplicationContext()),
-					new CondomOptions().addKit(new NullDeviceIdKit()), "");
-			fail("CondomKit is incompatible with CondomProcess");
-		} catch (final IllegalArgumentException ignored) {}
-
-		// Install in default process intentionally, since test cases cannot run in secondary process.
-		CondomProcess.installExcept(((Application) InstrumentationRegistry.getTargetContext().getApplicationContext()), new CondomOptions(), "");
-
-		// Check IActivityManager proxy
-		@SuppressLint("PrivateApi") final Object am_proxy = Class.forName("android.app.ActivityManagerNative").getMethod("getDefault").invoke(null);
-		assertTrue(Proxy.isProxyClass(am_proxy.getClass()));
-		sCondomProcessActivityManager = (CondomProcess.CondomProcessActivityManager) Proxy.getInvocationHandler(am_proxy);
-		assertEquals(CondomProcess.CondomProcessActivityManager.class, sCondomProcessActivityManager.getClass());
-
-		// Check IPackageManager proxy
-		final PackageManager pm = context().getPackageManager();
-		assertEquals("android.app.ApplicationPackageManager", pm.getClass().getName());
-		final Field ApplicationPackageManager_mPm = pm.getClass().getDeclaredField("mPM");
-		ApplicationPackageManager_mPm.setAccessible(true);
-		final Object pm_proxy = ApplicationPackageManager_mPm.get(pm);
-		assertTrue(Proxy.isProxyClass(pm_proxy.getClass()));
-		sCondomProcessPackageManager = (CondomProcess.CondomProcessPackageManager) Proxy.getInvocationHandler(pm_proxy);
-		assertEquals(CondomProcess.CondomProcessPackageManager.class, sCondomProcessPackageManager.getClass());
+			return future.get(3, TimeUnit.SECONDS);
+		} catch (final InterruptedException | ExecutionException | TimeoutException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
-	private void assertOutboundJudgeCalled(final int count) { assertEquals(count, mNumOutboundJudgeCalled.getAndSet(0)); }
+	private static Context context() { return InstrumentationRegistry.getTargetContext(); }
 
-	// The sContext returned by getTargetContext() is actually never accessible except in test cases.
-	private static Context context() { return InstrumentationRegistry.getTargetContext().getApplicationContext(); }
-
-	private final AtomicInteger mNumOutboundJudgeCalled = new AtomicInteger();
-	private Intent mIntent;
-	private final OutboundJudge mBlockAllJudge = new OutboundJudge() { @Override public boolean shouldAllow(final OutboundType type, final @Nullable Intent intent, final String target_pkg) {
-		mIntent = intent;
-		mNumOutboundJudgeCalled.incrementAndGet();
+	private static final OutboundJudge sBlockAllJudge = new OutboundJudge() { @Override public boolean shouldAllow(final OutboundType type, final @Nullable Intent intent, final String target_pkg) {
 		return false;
 	}};
 
-	private static CondomProcess.CondomProcessActivityManager sCondomProcessActivityManager;
-	private static CondomProcess.CondomProcessPackageManager sCondomProcessPackageManager;
-	private static final ServiceConnection SERVICE_CONNECTION = new ServiceConnection() {
-		@Override public void onServiceConnected(final ComponentName name, final IBinder service) {}
-		@Override public void onServiceDisconnected(final ComponentName name) {}
-	};
-
-	private static final String TAG = CondomProcessTest.class.getSimpleName();
+	private volatile IBinder mServiceBinder;
 }
