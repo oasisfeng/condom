@@ -43,8 +43,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -120,16 +120,16 @@ public class CondomProcessTest {
 		}};
 		if (intent.getAction() != null) context.registerReceiver(responder, new IntentFilter(intent.getAction()));
 
-		final CompletableFuture<Integer> future = new CompletableFuture<>();
-//		TestApplication.sEnablePackageNameFake = true;
-		context.sendOrderedBroadcast(intent, null, new BroadcastReceiver() { @Override public void onReceive(final Context context, final Intent intent) {
-			future.complete(getResultCode());
-		}}, null, Activity.RESULT_CANCELED, null, null);
-//		TestApplication.sEnablePackageNameFake = false;
-		final int result = waitForCompletion(future);
-		assertEquals(expected_pass ? Activity.RESULT_OK : Activity.RESULT_CANCELED, result);
-
-		if (intent.getAction() != null) context.unregisterReceiver(responder);
+		try {
+			final SettableFuture<Integer> future = new SettableFuture<>();
+			context.sendOrderedBroadcast(intent, null, new BroadcastReceiver() { @Override public void onReceive(final Context context, final Intent intent) {
+				future.set(getResultCode());
+			}}, null, Activity.RESULT_CANCELED, null, null);
+			final int result = waitForCompletion(future);
+			assertEquals(expected_pass ? Activity.RESULT_OK : Activity.RESULT_CANCELED, result);
+		} finally {
+			if (intent.getAction() != null) context.unregisterReceiver(responder);
+		}
 	}
 
 	@Test public void testQuery() {
@@ -226,10 +226,10 @@ public class CondomProcessTest {
 		TestApplication.sEnablePackageNameFake = false;
 	}
 
-	private static <T> T waitForCompletion(final CompletableFuture<T> future) {
+	private static <T> T waitForCompletion(final SettableFuture<T> future) {
 		try {
 			return future.get(3, TimeUnit.SECONDS);
-		} catch (final InterruptedException | ExecutionException | TimeoutException e) {
+		} catch (final InterruptedException | TimeoutException e) {
 			throw new RuntimeException(e);
 		}
 	}
@@ -241,4 +241,37 @@ public class CondomProcessTest {
 	}};
 
 	private volatile IBinder mServiceBinder;
+
+	final static class SettableFuture<T> implements Future<T> {
+
+		@Override public boolean cancel(final boolean mayInterruptIfRunning) {
+			return false;
+		}
+
+		@Override public boolean isCancelled() {
+			return false;
+		}
+
+		@Override public boolean isDone() {
+			return latch.getCount() == 0;
+		}
+
+		@Override public T get() throws InterruptedException {
+			latch.await();
+			return value;
+		}
+
+		@Override public T get(final long timeout, final TimeUnit unit) throws InterruptedException, TimeoutException {
+			if (latch.await(timeout, unit)) return value;
+			else throw new TimeoutException();
+		}
+
+		void set(final T result) {
+			value = result;
+			latch.countDown();
+		}
+
+		private T value;
+		private final CountDownLatch latch = new CountDownLatch(1);
+	}
 }

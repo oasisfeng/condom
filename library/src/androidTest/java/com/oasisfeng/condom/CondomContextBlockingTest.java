@@ -46,6 +46,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.test.InstrumentationRegistry;
 
+import org.junit.Assume;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -59,6 +60,7 @@ import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.HONEYCOMB_MR1;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR1;
 import static android.os.Build.VERSION_CODES.N;
+import static android.os.Build.VERSION_CODES.O;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertNotNull;
@@ -122,15 +124,20 @@ public class CondomContextBlockingTest {
 	}
 
 	@Test public void testPreventServiceInBackgroundPackages() {
+		Assume.assumeTrue(SDK_INT < O);
+
 		final TestContext context = new TestContext();
 		context.mTestingBackgroundUid = true;
 		final CondomOptions options = new CondomOptions().preventServiceInBackgroundPackages(true).preventBroadcastToBackgroundPackages(false);
 		final CondomContext condom = CondomContext.wrap(context, TAG, options), dry_condom = CondomContext.wrap(context, TAG, options.setDryRun(true));
-		assertEquals(3, condom.getPackageManager().queryIntentServices(intent(), 0).size());
+		List<ResolveInfo> services = condom.getPackageManager().queryIntentServices(intent(), 0);
+		assertEquals(3, services.size());
 		context.assertBaseCalled();
-		assertEquals(4, dry_condom.getPackageManager().queryIntentServices(intent(), 0).size());
+		services = dry_condom.getPackageManager().queryIntentServices(intent(), 0);
+		assertEquals(4, services.size());
 		context.assertBaseCalled();
-		assertEquals("non.bg.service", condom.getPackageManager().resolveService(intent(), 0).serviceInfo.packageName);
+		final ResolveInfo resolve = condom.getPackageManager().resolveService(intent(), 0);
+		assertEquals("non.bg.service", resolve.serviceInfo.packageName);
 		context.assertBaseCalled();
 		assertEquals(7777777, dry_condom.getPackageManager().resolveService(intent(), 0).serviceInfo.applicationInfo.uid);
 		context.assertBaseCalled();
@@ -155,11 +162,11 @@ public class CondomContextBlockingTest {
 		final CondomContext condom = CondomContext.wrap(context, TAG), dry_condom = CondomContext.wrap(context, TAG, new CondomOptions().setDryRun(true));
 
 		// Regular provider access
-		final String android_id = Settings.System.getString(context.getContentResolver(), Settings.System.ANDROID_ID);
+		final String android_id = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
 		assertNotNull(android_id);
-		final String condom_android_id = Settings.System.getString(condom.getContentResolver(), Settings.System.ANDROID_ID);
+		final String condom_android_id = Settings.Secure.getString(condom.getContentResolver(), Settings.Secure.ANDROID_ID);
 		assertEquals(android_id, condom_android_id);
-		final String dry_android_id = Settings.System.getString(dry_condom.getContentResolver(), Settings.System.ANDROID_ID);
+		final String dry_android_id = Settings.Secure.getString(dry_condom.getContentResolver(), Settings.Secure.ANDROID_ID);
 		assertEquals(android_id, dry_android_id);
 
 		context.mTestingStoppedProvider = true;
@@ -356,7 +363,7 @@ public class CondomContextBlockingTest {
 						final ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
 						final List<ActivityManager.RunningServiceInfo> services = am.getRunningServices(32);
 						if (services != null) for (final ActivityManager.RunningServiceInfo service : services) {
-							if (service.uid == android.os.Process.myUid()) continue;
+							if (service.pid == 0 || service.uid == android.os.Process.myUid()) continue;
 							resolves.add(buildResolveInfo(DISALLOWED_PACKAGE, true, 7777777));	// Simulate a background UID.
 							resolves.add(buildResolveInfo("non.bg.service", true, service.uid));
 							break;

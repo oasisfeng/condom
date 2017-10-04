@@ -46,6 +46,7 @@ import static android.Manifest.permission.WRITE_SETTINGS;
 import static android.content.pm.PackageManager.PERMISSION_DENIED;
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 import static android.os.Build.VERSION.SDK_INT;
+import static android.os.Build.VERSION_CODES.LOLLIPOP;
 import static android.os.Build.VERSION_CODES.M;
 import static android.os.Build.VERSION_CODES.O;
 import static org.junit.Assert.assertEquals;
@@ -88,16 +89,22 @@ public class CondomKitTest {
 		final CondomContext condom = CondomContext.wrap(new ContextWrapper(context), "NullDeviceId",
 				new CondomOptions().addKit(new NullDeviceIdKit()));
 		final TelephonyManager tm = (TelephonyManager) condom.getSystemService(Context.TELEPHONY_SERVICE);
-		assertTrue(condom.getApplicationContext().getSystemService(Context.TELEPHONY_SERVICE).getClass().getName().startsWith(NullDeviceIdKit.class.getName()));
+		assertNotNull(tm);
+		assertTrue(tm.getClass().getName().startsWith(NullDeviceIdKit.class.getName()));
+		final TelephonyManager app_tm = (TelephonyManager) condom.getApplicationContext().getSystemService(Context.TELEPHONY_SERVICE);
+		assertNotNull(app_tm);
+		assertTrue(app_tm.getClass().getName().startsWith(NullDeviceIdKit.class.getName()));
 
 		assertPermission(condom, READ_PHONE_STATE, true);
 
 		assertNull(tm.getDeviceId());
-		if (SDK_INT >= M) assertNull(tm.getDeviceId(0));
-		assertNull(tm.getImei());
-		assertNull(tm.getImei(0));
-		if (SDK_INT >= O) assertNull(tm.getMeid());
-		if (SDK_INT >= O) assertNull(tm.getMeid(0));
+		if (SDK_INT >= LOLLIPOP) {
+			if (SDK_INT >= M) assertNull(tm.getDeviceId(0));
+			assertNull(tm.getImei());
+			assertNull(tm.getImei(0));
+			if (SDK_INT >= O) assertNull(tm.getMeid());
+			if (SDK_INT >= O) assertNull(tm.getMeid(0));
+		}
 		assertNull(tm.getSimSerialNumber());
 		assertNull(tm.getLine1Number());
 		assertNull(tm.getSubscriberId());

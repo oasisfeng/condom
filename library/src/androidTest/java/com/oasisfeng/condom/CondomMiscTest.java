@@ -17,7 +17,6 @@
 
 package com.oasisfeng.condom;
 
-import android.app.ActivityManager;
 import android.app.Application;
 import android.content.ComponentName;
 import android.content.ContextWrapper;
@@ -30,6 +29,7 @@ import android.content.pm.ServiceInfo;
 import android.os.IBinder;
 import android.os.Process;
 import android.os.UserHandle;
+import android.provider.Settings;
 import android.support.test.InstrumentationRegistry;
 import android.util.DisplayMetrics;
 import android.util.EventLog;
@@ -44,6 +44,7 @@ import java.util.List;
 
 import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.LOLLIPOP;
+import static android.os.Build.VERSION_CODES.O;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertTrue;
 
@@ -102,29 +103,31 @@ public class CondomMiscTest {
 		assertEquals(intent.getPackage(), data[2]);
 		assertEquals(intent.toString(), data[3]);
 
-		final List<ResolveInfo> result = condom.getPackageManager().queryIntentServices(intent.setPackage(null).setComponent(null), 0);
-		assertEquals(1, result.size());		// 1 left: non.bg.service
-		final List<EventLog.Event> events = readNewEvents(CondomCore.CondomEvent.FILTER_BG_SERVICE);
-		assertEquals(2, events.size());		// 2 filtered: bg.service.*
-		data = (Object[]) events.get(0).getData();
-		assertEquals(condom.getPackageName(), data[0]);
-		assertEquals("Condom." + TAG, data[1]);
-		assertEquals("bg.service.1", data[2]);
-		final String expected_intent = new Intent(intent).toString();	// Flags altered
-		assertEquals(expected_intent, data[3]);
-		data = (Object[]) events.get(1).getData();
-		assertEquals(condom.getPackageName(), data[0]);
-		assertEquals("Condom." + TAG, data[1]);
-		assertEquals("bg.service.2", data[2]);
-		assertEquals(expected_intent, data[3]);
+		if (SDK_INT < O) {
+			final List<ResolveInfo> result = condom.getPackageManager().queryIntentServices(intent.setPackage(null).setComponent(null), 0);
+			assertEquals(1, result.size());		// 1 left: non.bg.service
+			final List<EventLog.Event> events = readNewEvents(CondomCore.CondomEvent.FILTER_BG_SERVICE);
+			assertEquals(2, events.size());		// 2 filtered: bg.service.*
+			data = (Object[]) events.get(0).getData();
+			assertEquals(condom.getPackageName(), data[0]);
+			assertEquals("Condom." + TAG, data[1]);
+			assertEquals("bg.service.1", data[2]);
+			final String expected_intent = new Intent(intent).toString();	// Flags altered
+			assertEquals(expected_intent, data[3]);
+			data = (Object[]) events.get(1).getData();
+			assertEquals(condom.getPackageName(), data[0]);
+			assertEquals("Condom." + TAG, data[1]);
+			assertEquals("bg.service.2", data[2]);
+			assertEquals(expected_intent, data[3]);
 
-		final ResolveInfo resolve = condom.getPackageManager().resolveService(intent, 0);
-		assertEquals("non.bg.service", resolve.serviceInfo.applicationInfo.packageName);
-		data = readLastEvent(CondomCore.CondomEvent.FILTER_BG_SERVICE);
-		assertEquals(condom.getPackageName(), data[0]);
-		assertEquals("Condom." + TAG, data[1]);
-		assertEquals("bg.service.1", data[2]);
-		assertEquals(expected_intent, data[3]);
+			final ResolveInfo resolve = condom.getPackageManager().resolveService(intent, 0);
+			assertEquals("non.bg.service", resolve.serviceInfo.applicationInfo.packageName);
+			data = readLastEvent(CondomCore.CondomEvent.FILTER_BG_SERVICE);
+			assertEquals(condom.getPackageName(), data[0]);
+			assertEquals("Condom." + TAG, data[1]);
+			assertEquals("bg.service.1", data[2]);
+			assertEquals(expected_intent, data[3]);
+		}
 
 		final CondomContext condom_wo_tag = CondomContext.wrap(new ContextWrapper(InstrumentationRegistry.getTargetContext()) {
 			@Override public boolean bindService(final Intent service, final ServiceConnection conn, final int flags) { return true; }
@@ -192,15 +195,14 @@ public class CondomMiscTest {
 			return new PackageManagerWrapper(super.getPackageManager()) {
 				@Override public List<ResolveInfo> queryIntentServices(final Intent intent, final int flags) {
 					final List<ResolveInfo> resolves = new ArrayList<>();
-					final ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
-					final List<ActivityManager.RunningServiceInfo> services = am.getRunningServices(32);
-					if (services != null) for (final ActivityManager.RunningServiceInfo service : services) {
-						if (service.uid == Process.myUid()) continue;
+					final String ime = Settings.Secure.getString(getContentResolver(), Settings.Secure.DEFAULT_INPUT_METHOD);
+					if (ime != null) try {
+						final String ime_pkg = ComponentName.unflattenFromString(ime).getPackageName();
+						final int uid = getPackageManager().getPackageUid(ime_pkg, 0);
 						resolves.add(buildResolveInfo("bg.service.1", 999999999));		// Simulate a background UID.
-						resolves.add(buildResolveInfo("non.bg.service", service.uid));
+						resolves.add(buildResolveInfo("non.bg.service", uid));
 						resolves.add(buildResolveInfo("bg.service.2", 88888888));
-						break;
-					}
+					} catch (final NameNotFoundException ignored) {}	// Should hardly happen
 					return resolves;
 				}
 
