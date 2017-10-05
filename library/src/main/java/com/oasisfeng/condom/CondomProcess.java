@@ -232,11 +232,11 @@ public class CondomProcess {
 
 	@VisibleForTesting static class CondomProcessActivityManager extends CondomSystemService {
 
-		private Object proceed(final Object proxy, final Method method, final Object[] args) throws Exception {
+		private Object proceed(final Object proxy, final Method method, final Object[] args) throws Throwable {
 			final String method_name = method.getName(); final Intent intent; final int result;
 			switch (method_name) {
 			case "broadcastIntent":	// int broadcastIntent(IApplicationThread caller, Intent intent, String resolvedType, IIntentReceiver resultTo, int resultCode, String resultData, Bundle map, String/[23+] String[] requiredPermissions, [18+ int appOp], [23+ Bundle options], boolean serialized, boolean sticky, [16+ int userId]);
-				result = mCondom.proceed(OutboundType.BROADCAST, (Intent) args[1], Integer.MIN_VALUE, new CondomCore.WrappedValueProcedureThrows<Integer, Exception>() { @Override public Integer proceed() throws Exception {
+				result = mCondom.proceed(OutboundType.BROADCAST, (Intent) args[1], Integer.MIN_VALUE, new CondomCore.WrappedValueProcedureThrows<Integer, Throwable>() { @Override public Integer proceed() throws Throwable {
 					return (Integer) CondomProcessActivityManager.super.invoke(proxy, method, args);
 				}});
 				final Object result_receiver = args[3];
@@ -253,14 +253,14 @@ public class CondomProcess {
 				return 0/* ActivityManager.BROADCAST_SUCCESS */;
 			case "bindService":
 				intent = (Intent) args[2];
-				result = mCondom.proceed(OutboundType.BIND_SERVICE, intent, 0, new CondomCore.WrappedValueProcedureThrows<Integer, Exception>() { @Override public Integer proceed() throws Exception {
+				result = mCondom.proceed(OutboundType.BIND_SERVICE, intent, 0, new CondomCore.WrappedValueProcedureThrows<Integer, Throwable>() { @Override public Integer proceed() throws Throwable {
 					return (Integer) CondomProcessActivityManager.super.invoke(proxy, method, args);
 				}});	// Result: 0 - no match, >0 - succeed, <0 - SecurityException.
 				if (result > 0) mCondom.logIfOutboundPass(FULL_TAG, intent, CondomCore.getTargetPackage(intent), CondomCore.CondomEvent.BIND_PASS);
 				return result;
 			case "startService":
 				intent = (Intent) args[1];
-				final ComponentName component = mCondom.proceed(OutboundType.START_SERVICE, intent, null, new CondomCore.WrappedValueProcedureThrows<ComponentName, Exception>() { @Override public ComponentName proceed() throws Exception {
+				final ComponentName component = mCondom.proceed(OutboundType.START_SERVICE, intent, null, new CondomCore.WrappedValueProcedureThrows<ComponentName, Throwable>() { @Override public ComponentName proceed() throws Throwable {
 					return (ComponentName) CondomProcessActivityManager.super.invoke(proxy, method, args);
 				}});
 				if (component != null) mCondom.logIfOutboundPass(FULL_TAG, intent, component.getPackageName(), CondomCore.CondomEvent.START_PASS);
@@ -274,8 +274,7 @@ public class CondomProcess {
 			return super.invoke(proxy, method, args);
 		}
 
-		@Override public Object invoke(final Object proxy, final Method method, final Object[] args)
-				throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+		@Override public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
 			try {
 				return proceed(proxy, method, args);
 			} catch (final Exception e) {
@@ -291,7 +290,7 @@ public class CondomProcess {
 
 	@VisibleForTesting static class CondomProcessPackageManager extends CondomSystemService {
 
-		private Object proceed(final Object proxy, final Method method, final Object[] args) throws Exception {
+		private Object proceed(final Object proxy, final Method method, final Object[] args) throws Throwable {
 			final String method_name = method.getName();
 			OutboundType outbound_type = null;
 			switch (method_name) {
@@ -315,7 +314,7 @@ public class CondomProcess {
 				// Intent flags could only filter background receivers, we have to deal with services by ourselves.
 				final Intent intent = (Intent) args[0];
 				final int original_intent_flags = intent.getFlags();
-				return mCondom.proceed(OutboundType.QUERY_SERVICES, intent, null, new CondomCore.WrappedValueProcedureThrows<ResolveInfo, Exception>() { @Override public ResolveInfo proceed() throws Exception {
+				return mCondom.proceed(OutboundType.QUERY_SERVICES, intent, null, new CondomCore.WrappedValueProcedureThrows<ResolveInfo, Throwable>() { @Override public ResolveInfo proceed() throws Throwable {
 					if (! mCondom.mExcludeBackgroundServices) return (ResolveInfo) CondomProcessPackageManager.super.invoke(proxy, method, args);
 
 					if (IPackageManager_queryIntentServices == null) {
@@ -350,8 +349,7 @@ public class CondomProcess {
 			return (List<T>) ParceledListSlice_getList.invoke(list);
 		}
 
-		@Override public Object invoke(final Object proxy, final Method method, final Object[] args)
-				throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+		@Override public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
 			try {
 				return proceed(proxy, method, args);
 			} catch (final Exception e) {
@@ -368,10 +366,13 @@ public class CondomProcess {
 
 	private static class CondomSystemService implements InvocationHandler {
 
-		@Override public Object invoke(final Object proxy, final Method method, final Object[] args)
-				throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+		@Override public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
 			if (DEBUG) Log.d(TAG, mServiceTag + method.getName() + (args == null ? "" : Arrays.toString(args)));
-			return method.invoke(mService, args);
+			try {
+				return method.invoke(mService, args);
+			} catch (final InvocationTargetException e) {
+				throw e.getTargetException();
+			}
 		}
 
 		CondomSystemService(final Object am, final String tag, final boolean debuggable) { mService = am; mServiceTag = tag; DEBUG = debuggable; }
