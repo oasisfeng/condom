@@ -1,8 +1,10 @@
 *.iml
 .gradle
 /local.gradle
+/local.buildscript.gradle
 /local.properties
 /.idea
 /captures
 build
+library/deploy.gradle
 .DS_Store

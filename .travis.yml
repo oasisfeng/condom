@@ -5,7 +5,7 @@ android:
     - tools
     - platform-tools
     - tools # intentional, see travis-ci/docs-travis-ci-com#779
-    - build-tools-26.0.0
+    - build-tools-26.0.2
     - android-22 # For emulator to work
     - android-26
     - extra-android-m2repository

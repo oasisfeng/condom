@@ -2,7 +2,7 @@ apply plugin: 'com.android.library'
 
 android {
     compileSdkVersion 26
-    buildToolsVersion "26.0.0"
+    buildToolsVersion "26.0.2"
 
     defaultConfig {
         minSdkVersion 9
@@ -11,7 +11,6 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
-
     }
 
     lintOptions {
@@ -19,6 +18,11 @@ android {
         disable 'NewApi'
         textOutput 'stdout'
         textReport true
+    }
+
+    adbOptions {
+        timeOutInMs 20 * 60 * 1000      // Extend to 20 minutes for Travis-CI.
+        installOptions "-d","-t"
     }
 
     buildTypes {

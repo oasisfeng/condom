@@ -13,10 +13,6 @@ public class TestApplication extends Application {
 
 	public static final String FAKE_PACKAGE_NAME = "a.b.c";
 
-	@Override public void onCreate() {
-		super.onCreate();
-	}
-
 	@Override public String getPackageName() {
 		return sEnablePackageNameFake ? FAKE_PACKAGE_NAME : super.getPackageName();
 	}
