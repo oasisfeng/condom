@@ -267,7 +267,7 @@ public class CondomProcess {
 				return component;
 			case "getContentProvider":
 				final String name = (String) args[1];
-				if (! mCondom.shouldAllowProvider(mCondom.mBase, name, PackageManager.GET_UNINSTALLED_PACKAGES))
+				if (! mCondom.shouldAllowProvider(mCondom.mBase, name, PackageManager.MATCH_ALL))	// MATCH_ALL as special hint to ask the hooked IPackageManager.resolveContentProvider() to bypass.
 					return null;	// Actually blocked by IPackageManager.resolveContentProvider() which is called in shouldAllowProvider() above.
 				break;
 			}
@@ -328,6 +328,8 @@ public class CondomProcess {
 
 			case "resolveContentProvider":
 				final ProviderInfo provider = (ProviderInfo) super.invoke(proxy, method, args);
+				final int flags = (int) args[1];
+				if ((flags & PackageManager.MATCH_ALL) != 0) return provider;	// MATCH_ALL will be used by the hooked IActivityManager.getContentProvider().
 				return mCondom.shouldAllowProvider(provider) ? provider : null;
 			case "getInstalledApplications":
 			case "getInstalledPackages":

@@ -359,12 +359,12 @@ public class CondomContext extends ContextWrapper {
 	private class CondomContentResolver extends ContentResolverWrapper {
 
 		@Override public IContentProvider acquireUnstableProvider(final Context context, final String name) {
-			if (! mCondom.shouldAllowProvider(context, name, PackageManager.GET_UNINSTALLED_PACKAGES)) return null;
+			if (! mCondom.shouldAllowProvider(context, name, PackageManager.MATCH_ALL)) return null;
 			return super.acquireUnstableProvider(context, name);
 		}
 
 		@Override public IContentProvider acquireProvider(final Context context, final String name) {
-			if (! mCondom.shouldAllowProvider(context, name, PackageManager.GET_UNINSTALLED_PACKAGES)) return null;
+			if (! mCondom.shouldAllowProvider(context, name, PackageManager.MATCH_ALL)) return null;
 			return super.acquireProvider(context, name);
 		}
 

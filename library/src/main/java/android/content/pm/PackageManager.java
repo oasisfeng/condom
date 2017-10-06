@@ -51,6 +51,7 @@ public abstract class PackageManager {
 	public static final int GET_PERMISSIONS             = 0x00001000;
 	public static final int GET_UNINSTALLED_PACKAGES    = 0x00002000;
 	public static final int GET_DISABLED_UNTIL_USED_COMPONENTS = 0x00008000;
+	public static final int MATCH_ALL					= 0x00020000;
 	public static final int PERMISSION_GRANTED = 0;
 	public static final int PERMISSION_DENIED = -1;
 

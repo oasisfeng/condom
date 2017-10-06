@@ -30,6 +30,7 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.ResolveInfo;
 import android.os.IBinder;
+import android.os.Process;
 import android.provider.Settings;
 import android.support.annotation.Nullable;
 import android.support.test.InstrumentationRegistry;
@@ -37,9 +38,7 @@ import android.support.test.InstrumentationRegistry;
 import com.oasisfeng.condom.kit.NullDeviceIdKit;
 import com.oasisfeng.condom.simulation.TestApplication;
 
-import org.junit.After;
 import org.junit.Assume;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.util.List;
@@ -165,17 +164,28 @@ public class CondomProcessTest {
 
 	@Test public void testProvider() {
 		runInSeparateProcess(new TestService.Procedure() { @Override public void run(final Context context) {
+			installCondomProcess(context, new CondomOptions());
+
 			final ContentResolver resolver = context.getContentResolver();
 			// Regular provider access
-			final String android_id = Settings.Secure.getString(resolver, Settings.System.ANDROID_ID);
-			assertNotNull(android_id);
+			final String android_id = Settings.Secure.getString(resolver, Settings.Secure.ANDROID_ID);
+			assertNotNull("Regular access to ANDROID_ID", android_id);
 			final ContentProviderClient client = resolver.acquireContentProviderClient(Settings.AUTHORITY);
-			assertNotNull(client);
+			assertNotNull("Regular access to Settings provider", client);
 			client.release();
 
+			withFakeSelfPackageName(new Runnable() { @Override public void run() {
+				assertNotNull("Regular access to content provider", resolver.acquireContentProviderClient("com.oasisfeng.condom.test"));
+			}});
+		}});
+
+		runInSeparateProcess(new TestService.Procedure() { @Override public void run(final Context context) {
 			installCondomProcess(context, new CondomOptions().setOutboundJudge(sBlockAllJudge));
 
-			assertNull(resolver.acquireContentProviderClient("downloads"));
+			final ContentResolver resolver = context.getContentResolver();
+			withFakeSelfPackageName(new Runnable() { @Override public void run() {
+				assertNull("Block access to provider", resolver.acquireContentProviderClient("com.oasisfeng.condom.test"));
+			}});
 		}});
 	}
 
@@ -188,32 +198,35 @@ public class CondomProcessTest {
 		}});
 	}
 
-	@Before public void prepare() throws InterruptedException {		// Ensure the separate process is always cleanly started.
+	private static void runInSeparateProcess(final TestService.Procedure procedure) {
 		final Context context = context();
-		//noinspection ConstantConditions
-		((ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE)).killBackgroundProcesses(context().getPackageName());
-		if (! context.bindService(new Intent(context, TestService.class), mServiceConnection, Context.BIND_AUTO_CREATE))
+		final ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+		assertNotNull(am);
+		KILL: for (;;) {		// Ensure the separate process is always cleanly started.
+			am.killBackgroundProcesses(context().getPackageName());
+			for (final ActivityManager.RunningAppProcessInfo process : am.getRunningAppProcesses()) {
+				if (process.uid != Process.myUid()) continue;
+				if (process.pid == Process.myPid()) continue;
+				try { Thread.sleep(20); } catch (final InterruptedException ignored) {}
+				continue KILL;
+			}
+			break;
+		}
+
+		final SettableFuture<IBinder> holder = new SettableFuture<>();
+		final ServiceConnection connection = new ServiceConnection() {
+			@Override public void onServiceConnected(final ComponentName name, final IBinder service) { holder.set(service); }
+			@Override public void onServiceDisconnected(final ComponentName name) {}
+		};
+		if (! context.bindService(new Intent(context, TestService.class), connection, Context.BIND_AUTO_CREATE))
 			throw new IllegalStateException("TestService is not properly setup");
-		while (mServiceBinder == null) Thread.sleep(20);
-	}
+		final IBinder binder = waitForCompletion(holder);
 
-	@After public void release() {
-		context().unbindService(mServiceConnection);
-	}
-
-	private final ServiceConnection mServiceConnection = new ServiceConnection() {
-		@Override public void onServiceConnected(final ComponentName name, final IBinder service) {
-			mServiceBinder = service;
+		try {
+			TestService.invokeService(binder, procedure);
+		} finally {
+			context.unbindService(connection);
 		}
-
-		@Override public void onServiceDisconnected(final ComponentName name) {
-			mServiceBinder = null;
-		}
-	};
-
-	private void runInSeparateProcess(final TestService.Procedure procedure) {
-		//noinspection ConstantConditions
-		TestService.invokeService(mServiceBinder, procedure);
 	}
 
 	private static void installCondomProcess(final Context context, final CondomOptions options) {
@@ -239,8 +252,6 @@ public class CondomProcessTest {
 	private static final OutboundJudge sBlockAllJudge = new OutboundJudge() { @Override public boolean shouldAllow(final OutboundType type, final @Nullable Intent intent, final String target_pkg) {
 		return false;
 	}};
-
-	private volatile IBinder mServiceBinder;
 
 	final static class SettableFuture<T> implements Future<T> {
 

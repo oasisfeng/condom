@@ -17,6 +17,7 @@
 
 package com.oasisfeng.condom;
 
+import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -31,9 +32,11 @@ import android.content.pm.ProviderInfo;
 import android.content.pm.ResolveInfo;
 import android.os.Handler;
 import android.os.Process;
+import android.provider.Settings;
 import android.support.annotation.CheckResult;
 import android.support.annotation.Keep;
 import android.support.annotation.Nullable;
+import android.support.annotation.RequiresApi;
 import android.support.annotation.RestrictTo;
 import android.support.annotation.VisibleForTesting;
 import android.util.EventLog;
@@ -122,7 +125,7 @@ class CondomCore {
 		return mOutboundJudge != null && ! mOutboundJudge.shouldAllow(type, intent, target_pkg) && ! mDryRun;
 	}
 
-	private int adjustIntentFlags(final OutboundType type, final Intent intent) {
+	@SuppressLint("WrongConstant") private int adjustIntentFlags(final OutboundType type, final Intent intent) {
 		final int original_flags = intent.getFlags();
 		if (mDryRun) return original_flags;
 		if (mExcludeBackgroundReceivers && (type == OutboundType.BROADCAST || type == OutboundType.QUERY_RECEIVERS))
@@ -132,7 +135,8 @@ class CondomCore {
 		return original_flags;
 	}
 
-	@Nullable ResolveInfo filterCandidates(final OutboundType type, final Intent original_intent, final @Nullable List<ResolveInfo> candidates, final String tag, final boolean remove) {
+	@Nullable ResolveInfo filterCandidates(final OutboundType type, final Intent original_intent, final @Nullable List<ResolveInfo> candidates,
+										   final String tag, final boolean remove) {
 		if (candidates == null || candidates.isEmpty()) return null;
 
 		final int my_uid = Process.myUid();
@@ -160,9 +164,10 @@ class CondomCore {
 	}
 
 	boolean shouldAllowProvider(final @Nullable ProviderInfo provider) {
-		if (provider == null) return false;
+		if (provider == null) return true;		// We know nothing about the provider, better allow than block.
 		if (mBase.getPackageName().equals(provider.packageName)) return true;
-		if (shouldBlockRequestTarget(OutboundType.CONTENT, null, provider.packageName)) return mDryRun;
+		if (shouldBlockRequestTarget(OutboundType.CONTENT, null, provider.packageName)) return false;
+		if (Settings.AUTHORITY.equals(provider.authority)) return true;	// Always allow access to system settings, to avoid rare cases in the wild that the provider info of Settings provider is inaccurate.
 		//noinspection SimplifiableIfStatement
 		if (SDK_INT >= HONEYCOMB_MR1 && mExcludeStoppedPackages
 				&& (provider.applicationInfo.flags & (FLAG_SYSTEM | ApplicationInfo.FLAG_STOPPED)) == ApplicationInfo.FLAG_STOPPED) return mDryRun;
@@ -232,15 +237,8 @@ class CondomCore {
 	private static final int EVENT_TAG = "Condom".hashCode();
 	private static final String TAG = "Condom";
 
-	/**
-	 * If set, the broadcast will never go to manifest receivers in background (cached
-	 * or not running) apps, regardless of whether that would be done by default.  By
-	 * default they will receive broadcasts if the broadcast has specified an
-	 * explicit component or package name.
-	 *
-	 * @since API level 24 (Android N)
-	 */
-	@VisibleForTesting static final int FLAG_RECEIVER_EXCLUDE_BACKGROUND = 0x00800000;
+	/** Mirror of the hidden Intent.FLAG_RECEIVER_EXCLUDE_BACKGROUND, since API level 24 (Android N) */
+	@RequiresApi(N) @VisibleForTesting static final int FLAG_RECEIVER_EXCLUDE_BACKGROUND = 0x00800000;
 
 	class BackgroundUidFilter {
 
@@ -258,12 +256,16 @@ class CondomCore {
 		}
 
 		BackgroundUidFilter() {
-			if (SDK_INT >= LOLLIPOP_MR1) {		// getRunningAppProcesses() is limited on Android 5.1+.
-				running_services = ((ActivityManager) mBase.getSystemService(ACTIVITY_SERVICE)).getRunningServices(64);	// Too many services are never healthy, thus ignored intentionally.
+			final ActivityManager am = (ActivityManager) mBase.getSystemService(ACTIVITY_SERVICE);
+			if (am == null) {
+				running_services = null;
+				running_processes = null;
+			} else if (SDK_INT >= LOLLIPOP_MR1) {		// getRunningAppProcesses() is limited on Android 5.1+.
+				running_services = am.getRunningServices(64);	// Too many services are never healthy, thus ignored intentionally.
 				running_processes = null;
 			} else {
 				running_services = null;
-				running_processes = ((ActivityManager) mBase.getSystemService(ACTIVITY_SERVICE)).getRunningAppProcesses();
+				running_processes = am.getRunningAppProcesses();
 			}
 		}
 
@@ -281,7 +283,8 @@ class CondomCore {
 			return registerReceiver(receiver, filter, null, null);
 		}
 
-		@Override public Intent registerReceiver(final BroadcastReceiver receiver, final IntentFilter filter, final String broadcastPermission, final Handler scheduler) {
+		@Override public Intent registerReceiver(final BroadcastReceiver receiver, final IntentFilter filter,
+												 final @Nullable String broadcastPermission, final @Nullable Handler scheduler) {
 			if (receiver == null) {
 				// Allow retrieving current sticky broadcast; this is safe since we
 				// aren't actually registering a receiver.
