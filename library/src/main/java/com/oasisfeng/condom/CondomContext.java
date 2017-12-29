@@ -17,6 +17,7 @@
 
 package com.oasisfeng.condom;
 
+import android.annotation.SuppressLint;
 import android.app.Application;
 import android.content.BroadcastReceiver;
 import android.content.ComponentCallbacks;
@@ -145,13 +146,14 @@ public class CondomContext extends ContextWrapper {
 		}}, null);
 	}
 
-	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user) {
+	@RequiresApi(JELLY_BEAN_MR1) @SuppressLint("MissingPermission") @Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user) {
 		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendBroadcastAsUser(intent, user);
 		}}, null);
 	}
 
-	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission) {
+	@RequiresApi(JELLY_BEAN_MR1) @SuppressLint("MissingPermission") @Override
+	public void sendBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission) {
 		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendBroadcastAsUser(intent, user, receiverPermission);
 		}}, null);
@@ -170,32 +172,35 @@ public class CondomContext extends ContextWrapper {
 		}}, resultReceiver);
 	}
 
-	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendOrderedBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission, final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
+	@RequiresApi(JELLY_BEAN_MR1) @SuppressLint("MissingPermission") @Override
+	public void sendOrderedBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission,
+			final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
 		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendOrderedBroadcastAsUser(intent, user, receiverPermission, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 		}}, resultReceiver);
 	}
 
-	@Override public void sendStickyBroadcast(final Intent intent) {
+	@Override @SuppressLint("MissingPermission") public void sendStickyBroadcast(final Intent intent) {
 		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendStickyBroadcast(intent);
 		}}, null);
 	}
 
-	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendStickyBroadcastAsUser(final Intent intent, final UserHandle user) {
+	@RequiresApi(JELLY_BEAN_MR1) @SuppressLint("MissingPermission") @Override public void sendStickyBroadcastAsUser(final Intent intent, final UserHandle user) {
 		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendStickyBroadcastAsUser(intent, user);
 		}}, null);
 	}
 
-	@Override public void sendStickyOrderedBroadcast(final Intent intent, final BroadcastReceiver resultReceiver, final Handler scheduler,
-													 final int initialCode, final String initialData, final Bundle initialExtras) {
+	@Override @SuppressLint("MissingPermission") public void sendStickyOrderedBroadcast(final Intent intent, final BroadcastReceiver resultReceiver,
+			final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
 		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendStickyOrderedBroadcast(intent, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 		}}, resultReceiver);
 	}
 
-	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendStickyOrderedBroadcastAsUser(final Intent intent, final UserHandle user, final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
+	@RequiresApi(JELLY_BEAN_MR1) @SuppressLint("MissingPermission") @Override
+	public void sendStickyOrderedBroadcastAsUser(final Intent intent, final UserHandle user, final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
 		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
 			CondomContext.super.sendStickyOrderedBroadcastAsUser(intent, user, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 		}}, resultReceiver);

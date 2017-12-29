@@ -17,6 +17,7 @@
 
 package com.oasisfeng.condom;
 
+import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentResolver;
@@ -303,42 +304,44 @@ class PseudoContextWrapper extends Context {
 		mBase.sendOrderedBroadcast(intent, receiverPermission, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 	}
 
-	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendBroadcastAsUser(Intent intent, UserHandle user) {
+	@RequiresApi(JELLY_BEAN_MR1) @SuppressLint("MissingPermission") @Override public void sendBroadcastAsUser(Intent intent, UserHandle user) {
 		mBase.sendBroadcastAsUser(intent, user);
 	}
 
-	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendBroadcastAsUser(Intent intent, UserHandle user, String receiverPermission) {
+	@RequiresApi(JELLY_BEAN_MR1) @SuppressLint("MissingPermission") @Override
+	public void sendBroadcastAsUser(Intent intent, UserHandle user, String receiverPermission) {
 		mBase.sendBroadcastAsUser(intent, user, receiverPermission);
 	}
 
-	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendOrderedBroadcastAsUser(Intent intent, UserHandle user, String receiverPermission,
-			BroadcastReceiver resultReceiver, Handler scheduler, int initialCode, String initialData, Bundle initialExtras) {
+	@RequiresApi(JELLY_BEAN_MR1) @SuppressLint("MissingPermission") @Override
+	public void sendOrderedBroadcastAsUser(Intent intent, UserHandle user, String receiverPermission, BroadcastReceiver resultReceiver,
+										   Handler scheduler, int initialCode, String initialData, Bundle initialExtras) {
 		mBase.sendOrderedBroadcastAsUser(intent, user, receiverPermission, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 	}
 
-	@Override public void sendStickyBroadcast(Intent intent) {
+	@Override @SuppressLint("MissingPermission") public void sendStickyBroadcast(Intent intent) {
 		mBase.sendStickyBroadcast(intent);
 	}
 
-	@Override public void sendStickyOrderedBroadcast(Intent intent, BroadcastReceiver resultReceiver, Handler scheduler, int initialCode,
-			String initialData, Bundle initialExtras) {
+	@Override @SuppressLint("MissingPermission") public void sendStickyOrderedBroadcast(Intent intent, BroadcastReceiver resultReceiver,
+			Handler scheduler, int initialCode, String initialData, Bundle initialExtras) {
 		mBase.sendStickyOrderedBroadcast(intent, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 	}
 
-	@Override public void removeStickyBroadcast(Intent intent) {
+	@Override @SuppressLint("MissingPermission") public void removeStickyBroadcast(Intent intent) {
 		mBase.removeStickyBroadcast(intent);
 	}
 
-	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendStickyBroadcastAsUser(Intent intent, UserHandle user) {
+	@RequiresApi(JELLY_BEAN_MR1) @SuppressLint("MissingPermission") @Override public void sendStickyBroadcastAsUser(Intent intent, UserHandle user) {
 		mBase.sendStickyBroadcastAsUser(intent, user);
 	}
 
-	@RequiresApi(JELLY_BEAN_MR1) @Override public void sendStickyOrderedBroadcastAsUser(Intent intent, UserHandle user,
-			BroadcastReceiver resultReceiver, Handler scheduler, int initialCode, String initialData, Bundle initialExtras) {
+	@RequiresApi(JELLY_BEAN_MR1) @SuppressLint("MissingPermission") @Override public void sendStickyOrderedBroadcastAsUser(Intent intent,
+			UserHandle user, BroadcastReceiver resultReceiver, Handler scheduler, int initialCode, String initialData, Bundle initialExtras) {
 		mBase.sendStickyOrderedBroadcastAsUser(intent, user, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 	}
 
-	@RequiresApi(JELLY_BEAN_MR1) @Override @Deprecated public void removeStickyBroadcastAsUser(Intent intent, UserHandle user) {
+	@RequiresApi(JELLY_BEAN_MR1) @SuppressLint("MissingPermission") @Override @Deprecated public void removeStickyBroadcastAsUser(Intent intent, UserHandle user) {
 		mBase.removeStickyBroadcastAsUser(intent, user);
 	}
 
