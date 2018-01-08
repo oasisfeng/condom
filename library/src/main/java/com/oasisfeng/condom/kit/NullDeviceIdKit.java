@@ -18,6 +18,7 @@
 package com.oasisfeng.condom.kit;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
@@ -46,7 +47,7 @@ public class NullDeviceIdKit implements CondomKit, CondomKit.SystemServiceSuppli
 		return Context.TELEPHONY_SERVICE.equals(name) ? new CondomTelephonyManager(context) : null;
 	}
 
-	class CondomTelephonyManager extends TelephonyManager {
+	@SuppressLint("MissingPermission") class CondomTelephonyManager extends TelephonyManager {
 
 		private static final int UNSUPPORTED_LISTEN_EVENTS = LISTEN_SIGNAL_STRENGTH | LISTEN_MESSAGE_WAITING_INDICATOR | LISTEN_CALL_FORWARDING_INDICATOR;
 
