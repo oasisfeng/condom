@@ -109,7 +109,7 @@ public class CondomProcess {
 	private static void validateCondomOptions(final CondomOptions options) {
 		if (options.mKits != null && ! options.mKits.isEmpty())
 			throw new IllegalArgumentException("CondomKit is not yet compatible with CondomProcess. " +
-				"If you really need this, please submit a feature request with the use case.");
+				"If you really need this, please submit a feature request on GitHub issue tracker, with the use case.");
 	}
 
 	private static void validateProcessNames(final Application app, final String[] process_names) {
@@ -153,13 +153,13 @@ public class CondomProcess {
 		return null;
 	}
 
-	private static void install(final Application app, final String current_process_name, final CondomOptions options) {
-		final int pos_colon = current_process_name.indexOf(':');
-		final String tag = pos_colon > 0 ? current_process_name.substring(pos_colon) : current_process_name;
+	private static void install(final Application app, final String process_name_or_tag, final CondomOptions options) {
+		final int pos_colon = process_name_or_tag.indexOf(':');
+		final String tag = pos_colon > 0 ? process_name_or_tag.substring(pos_colon) : process_name_or_tag;
 		FULL_TAG = "Condom:" + tag;
 		TAG = CondomCore.asLogTag(FULL_TAG);
 
-		final CondomCore condom = new CondomCore(app, options);
+		final CondomCore condom = new CondomCore(app, options, TAG);
 		try {
 			installCondomProcessActivityManager(condom);
 			installCondomProcessPackageManager(condom);
@@ -304,9 +304,15 @@ public class CondomProcess {
 				final Object result = super.invoke(proxy, method, args);
 
 				//noinspection ResultOfMethodCallIgnored, since the result here may be the inner list if the original result is ParceledListSlice.
-				final List<ResolveInfo> list = mCondom.proceedQuery(outbound_type, (Intent) args[0], new CondomCore.WrappedValueProcedureThrows<List<ResolveInfo>, Exception>() { @Override public List<ResolveInfo> proceed() throws Exception {
-					return asList(result);
-				}});
+				final List<ResolveInfo> list = mCondom.proceedQuery(outbound_type, (Intent) args[0], new CondomCore.WrappedValueProcedureThrows<List<ResolveInfo>, Exception>() {
+					@Override public List<ResolveInfo> proceed() throws Exception {
+						return asList(result);
+					}
+				}, new CondomCore.Function<ResolveInfo, String>() {
+					@Override public String apply(final ResolveInfo resolve) {
+						return resolve.activityInfo.packageName;
+					}
+				});
 				if (list.isEmpty()) asList(result).clear();	// In case Collections.emptyList() is returned due to targeted query being rejected by outbound judge.
 				return result;
 
@@ -360,7 +366,7 @@ public class CondomProcess {
 			return super.invoke(proxy, method, args);
 		}
 
-		CondomProcessPackageManager(final CondomCore condom, final Object pm) { super (pm, "IPackageManager.", condom.DEBUG); mCondom = condom; }
+		CondomProcessPackageManager(final CondomCore condom, final Object pm) { super(pm, "IPackageManager.", condom.DEBUG); mCondom = condom; }
 		@VisibleForTesting CondomCore mCondom;
 		private Method IPackageManager_queryIntentServices;
 		private Method ParceledListSlice_getList;
@@ -369,7 +375,7 @@ public class CondomProcess {
 	private static class CondomSystemService implements InvocationHandler {
 
 		@Override public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
-			if (DEBUG) Log.d(TAG, mServiceTag + method.getName() + (args == null ? "" : Arrays.toString(args)));
+			if (DEBUG) Log.d(TAG, mServiceTag + method.getName() + (args == null ? "" : Arrays.deepToString(args)));
 			try {
 				return method.invoke(mService, args);
 			} catch (final InvocationTargetException e) {

@@ -21,6 +21,7 @@ import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.Intent;
@@ -28,6 +29,7 @@ import android.content.IntentFilter;
 import android.content.ReceiverCallNotAllowedException;
 import android.content.ServiceConnection;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.content.pm.ProviderInfo;
 import android.content.pm.ResolveInfo;
 import android.os.Handler;
@@ -42,10 +44,17 @@ import android.support.annotation.VisibleForTesting;
 import android.util.EventLog;
 import android.util.Log;
 
+import com.oasisfeng.condom.util.Lazy;
+
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_BACKGROUND;
 import static android.content.Context.ACTIVITY_SERVICE;
@@ -61,12 +70,43 @@ import static android.os.Build.VERSION_CODES.O;
  *
  * Created by Oasis on 2017/4/21.
  */
-@Keep @RestrictTo(RestrictTo.Scope.LIBRARY)
+@Keep @RestrictTo(RestrictTo.Scope.LIBRARY) @SuppressWarnings("TypeParameterHidesVisibleType")
 class CondomCore {
+
+	Object getSystemService(final String name) {
+		if (mKitManager != null) {
+			final CondomKit.SystemServiceSupplier supplier = mKitManager.mSystemServiceSuppliers.get(name);
+			if (supplier != null) {
+				final Object service = supplier.getSystemService(mBase, name);
+				if (service != null) return service;
+			}
+		}
+		return null;
+	}
+
+	boolean shouldSpoofPermission(final String permission) {
+		return mKitManager != null && mKitManager.mSpoofPermissions.contains(permission);
+	}
+
+	Set<String> getSpoofPermissions() {
+		return mKitManager != null ? mKitManager.mSpoofPermissions : Collections.<String>emptySet();
+	}
+
+	ContentResolver getContentResolver() {
+		return mContentResolver.get();
+	}
+
+	PackageManager getPackageManager() {
+		return mPackageManager.get();
+	}
+
+	String getPackageName() {
+		return mBase.getPackageName();
+	}
 
 	interface WrappedValueProcedure<R> extends WrappedValueProcedureThrows<R, RuntimeException> {}
 
-	interface WrappedValueProcedureThrows<R, T extends Throwable> { R proceed() throws T; }
+	interface WrappedValueProcedureThrows<R, T extends Throwable> { @Nullable R proceed() throws T; }
 
 	static abstract class WrappedProcedure implements WrappedValueProcedure<Boolean> {
 		abstract void run();
@@ -79,34 +119,39 @@ class CondomCore {
 			resultReceiver.onReceive(new ReceiverRestrictedContext(context), intent);
 	}
 
-	@SuppressWarnings("TypeParameterHidesVisibleType")
-	@CheckResult <R, T extends Throwable> R proceed(final OutboundType type, final Intent intent, final @Nullable R negative_value,
-													final CondomCore.WrappedValueProcedureThrows<R, T> procedure) throws T {
-		final String target_pkg = getTargetPackage(intent);
+	@CheckResult <R, T extends Throwable> R proceed(final OutboundType type, final @Nullable Intent intent, final @Nullable R negative_value,
+													final WrappedValueProcedureThrows<R, T> procedure) throws T {
+		final String target_pkg = intent != null ? getTargetPackage(intent) : null;
 		if (target_pkg != null) {
 			if (mBase.getPackageName().equals(target_pkg)) return procedure.proceed();	// Self-targeting request is allowed unconditionally
 
 			if (shouldBlockRequestTarget(type, intent, target_pkg)) return negative_value;
 		}
-		final int original_flags = adjustIntentFlags(type, intent);
+		final int original_flags = intent != null ? adjustIntentFlags(type, intent) : 0;
 		try {
 			return procedure.proceed();
 		} finally {
-			intent.setFlags(original_flags);
+			if (intent != null) intent.setFlags(original_flags);
 		}
 	}
 
-	@CheckResult <T extends Throwable> List<ResolveInfo> proceedQuery(
-			final OutboundType type, final Intent intent, final CondomCore.WrappedValueProcedureThrows<List<ResolveInfo>, T> procedure) throws T {
-		return proceed(type, intent, Collections.<ResolveInfo>emptyList(), new CondomCore.WrappedValueProcedureThrows<List<ResolveInfo>, T>() { @Override public List<ResolveInfo> proceed() throws T {
-			final List<ResolveInfo> candidates = procedure.proceed();
+	@CheckResult <R, T extends Throwable> R proceed(final OutboundType type, final String target_pkg, final @Nullable R negative_value,
+													final WrappedValueProcedureThrows<R, T> procedure) throws T {
+		if (mBase.getPackageName().equals(target_pkg)) return procedure.proceed();	// Self-targeting request is allowed unconditionally
+		if (shouldBlockRequestTarget(type, null, target_pkg)) return negative_value;
+		return procedure.proceed();
+	}
 
-			if (mOutboundJudge != null && getTargetPackage(intent) == null) {	// Package-targeted intent is already filtered by OutboundJudge in proceed().
-				final Iterator<ResolveInfo> iterator = candidates.iterator();
+	@CheckResult <T, E extends Throwable> List<T> proceedQuery(final OutboundType type, final @Nullable Intent intent,
+															   final WrappedValueProcedureThrows<List<T>, E> procedure, final Function<T, String> pkg_getter) throws E {
+		return proceed(type, intent, Collections.<T>emptyList(), new WrappedValueProcedureThrows<List<T>, E>() { @Override public List<T> proceed() throws E {
+			final List<T> candidates = procedure.proceed();
+
+			if (candidates != null && mOutboundJudge != null && (intent == null || getTargetPackage(intent) == null)) {	// Package-targeted intent is already filtered by OutboundJudge in proceed().
+				final Iterator<T> iterator = candidates.iterator();
 				while (iterator.hasNext()) {
-					final ResolveInfo candidate = iterator.next();
-					final String pkg = type == OutboundType.QUERY_SERVICES ? candidate.serviceInfo.packageName
-							: (type == OutboundType.QUERY_RECEIVERS ? candidate.activityInfo.packageName : null);
+					final T candidate = iterator.next();
+					final String pkg = pkg_getter.apply(candidate);
 					if (pkg != null && shouldBlockRequestTarget(type, intent, pkg))		// Dry-run is checked inside shouldBlockRequestTarget()
 						iterator.remove();		// TODO: Not safe to assume the list returned from PackageManager is modifiable.
 				}
@@ -114,6 +159,7 @@ class CondomCore {
 			return candidates;
 		}});
 	}
+	interface Function<T, R> { R apply(T t); }
 
 	static String getTargetPackage(final Intent intent) {
 		final ComponentName component = intent.getComponent();
@@ -213,15 +259,29 @@ class CondomCore {
 		return tag.length() > 23 ? tag.substring(0, 23) : tag;
 	}
 
-	CondomCore(final Context base, final CondomOptions options) {
+	CondomCore(final Context base, final CondomOptions options, final String tag) {
 		mBase = base;
 		DEBUG = (base.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
 		mExcludeBackgroundReceivers = options.mExcludeBackgroundReceivers;
 		mExcludeBackgroundServices = SDK_INT < O && options.mExcludeBackgroundServices;
 		mOutboundJudge = options.mOutboundJudge;
 		mDryRun = options.mDryRun;
-		mKits = options.mKits;
-		if (mDryRun) Log.w(TAG, "Start dry-run mode, no outbound requests will be blocked actually, despite later stated in log.");
+
+		mPackageManager = new Lazy<PackageManager>() { @Override protected PackageManager create() {
+			return new CondomPackageManager(CondomCore.this, base.getPackageManager(), tag);
+		}};
+		mContentResolver = new Lazy<ContentResolver>() { @Override protected ContentResolver create() {
+			return new CondomContentResolver(CondomCore.this, base, base.getContentResolver());
+		}};
+
+		final List<CondomKit> kits = options.mKits == null ? null : new ArrayList<>(options.mKits);
+		if (kits != null && ! kits.isEmpty()) {
+			mKitManager = new CondomKitManager();
+			for (final CondomKit kit : kits)
+				kit.onRegister(mKitManager);
+		} else mKitManager = null;
+
+		if (mDryRun) Log.w(tag, "Start dry-run mode, no outbound requests will be blocked actually, despite later stated in log.");
 	}
 
 	final Context mBase;	// The real Context
@@ -232,13 +292,28 @@ class CondomCore {
 	boolean mExcludeStoppedPackages = true;
 	boolean mExcludeBackgroundReceivers;
 	boolean mExcludeBackgroundServices;
-	final List<CondomKit> mKits;
+	private final Lazy<PackageManager> mPackageManager;
+	private final Lazy<ContentResolver> mContentResolver;
+	private final @Nullable CondomKitManager mKitManager;
 
 	private static final int EVENT_TAG = "Condom".hashCode();
-	private static final String TAG = "Condom";
 
 	/** Mirror of the hidden Intent.FLAG_RECEIVER_EXCLUDE_BACKGROUND, since API level 24 (Android N) */
 	@RequiresApi(N) @VisibleForTesting static final int FLAG_RECEIVER_EXCLUDE_BACKGROUND = 0x00800000;
+
+	static class CondomKitManager implements CondomKit.CondomKitRegistry {
+
+		@Override public void addPermissionSpoof(final String permission) {
+			mSpoofPermissions.add(permission);
+		}
+
+		@Override public void registerSystemService(final String name, final CondomKit.SystemServiceSupplier supplier) {
+			mSystemServiceSuppliers.put(name, supplier);
+		}
+
+		final Map<String, CondomKit.SystemServiceSupplier> mSystemServiceSuppliers = new HashMap<>();
+		final Set<String> mSpoofPermissions = new HashSet<>();
+	}
 
 	class BackgroundUidFilter {
 

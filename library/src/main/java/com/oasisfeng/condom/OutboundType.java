@@ -41,5 +41,9 @@ public enum OutboundType {
 	/** Either {@link PackageManager#queryIntentServices(Intent, int)} or {@link PackageManager#resolveService(Intent, int)} */
 	QUERY_SERVICES,
 	/** @see PackageManager#queryBroadcastReceivers(Intent, int) */
-	QUERY_RECEIVERS
+	QUERY_RECEIVERS,
+	/** @see PackageManager#getPackageInfo(String, int) */
+	GET_PACKAGE_INFO,
+	/** @see PackageManager#checkPermission(String, String) */
+	CHECK_PERMISSION,
 }

@@ -20,10 +20,10 @@ package com.oasisfeng.condom;
 import android.annotation.SuppressLint;
 import android.app.Application;
 import android.content.BroadcastReceiver;
+import android.content.ComponentCallbacks;
 import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.Context;
-import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
@@ -31,79 +31,61 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Process;
 import android.os.UserHandle;
-import android.support.annotation.CheckResult;
-import android.support.annotation.Keep;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.support.annotation.Size;
-import android.util.Log;
-
-import com.oasisfeng.condom.util.Lazy;
 
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 import static android.os.Build.VERSION.SDK_INT;
+import static android.os.Build.VERSION_CODES.ICE_CREAM_SANDWICH;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR1;
+import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR2;
 import static android.os.Build.VERSION_CODES.M;
-import static android.os.Build.VERSION_CODES.O;
 
 /**
- * The condom-style {@link ContextWrapper} to prevent unwanted behaviors going through.
+ * Application wrapper for {@link CondomContext#getApplicationContext()}
  *
- * Created by Oasis on 2017/3/25.
+ * Created by Oasis on 2018/1/6.
  */
-@Keep
-public class CondomContext extends ContextWrapper {
+class CondomApplication extends Application {
 
-	public static @CheckResult CondomContext wrap(final Context base, final @Nullable @Size(max=13) String tag) {
-		return wrap(base, tag, new CondomOptions());
+	@Override public void registerComponentCallbacks(final ComponentCallbacks callback) {
+		if (SDK_INT >= ICE_CREAM_SANDWICH) mApplication.registerComponentCallbacks(callback);
 	}
 
-	/**
-	 * This is the very first (probably only) API you need to wrap the naked {@link Context} under protection of <code>CondomContext</code>
-	 *
-	 * @param base	the original context used before <code>CondomContext</code> is introduced.
-	 * @param tag	the optional tag to distinguish between multiple instances of <code>CondomContext</code> used parallel.
-	 */
-	public static @CheckResult CondomContext wrap(final Context base, final @Nullable @Size(max=13) String tag, final CondomOptions options) {
-		if (base instanceof CondomContext) {
-			final CondomContext condom = ((CondomContext) base);
-			Log.w("Condom", "The wrapped context is already a CondomContext (tag: " + condom.TAG + "), tag and options specified here will be ignore.");
-			return condom;
-		}
-		final Context app_context = base.getApplicationContext();
-		final CondomCore condom = new CondomCore(base, options, CondomCore.buildLogTag("Condom", "Condom.", tag));
-		if (app_context instanceof Application) {	// The application context is indeed an Application, this should be preserved semantically.
-			final Application app = (Application) app_context;
-			final CondomApplication condom_app = new CondomApplication(condom, app, tag);	// TODO: Application instance should be unique across CondomContext.
-			final CondomContext condom_context = new CondomContext(condom, condom_app, tag);
-			condom_app.attachBaseContext(base == app_context ? condom_context : new CondomContext(condom, app, tag));
-			return condom_context;
-		} else return new CondomContext(condom, base == app_context ? null : new CondomContext(condom, app_context, tag), tag);
+	@Override public void unregisterComponentCallbacks(final ComponentCallbacks callback) {
+		if (SDK_INT >= ICE_CREAM_SANDWICH) mApplication.unregisterComponentCallbacks(callback);
 	}
 
-	/** @deprecated Use {@link CondomOptions} instead */
-	public CondomContext setDryRun(final boolean dry_run) {
-		if (dry_run == mCondom.mDryRun) return this;
-		mCondom.mDryRun = dry_run;
-		if (dry_run) Log.w(TAG, "Start dry-run mode, no outbound requests will be blocked actually, despite later stated in log.");
-		else Log.w(TAG, "Stop dry-run mode.");
-		return this;
+	@Override public void registerActivityLifecycleCallbacks(final ActivityLifecycleCallbacks callback) {
+		if (SDK_INT >= ICE_CREAM_SANDWICH) mApplication.registerActivityLifecycleCallbacks(callback);
 	}
 
-	/** @deprecated Use {@link CondomOptions} instead */
-	@Deprecated public CondomContext preventWakingUpStoppedPackages(final boolean prevent_or_not) { mCondom.mExcludeStoppedPackages = prevent_or_not; return this; }
+	@Override public void unregisterActivityLifecycleCallbacks(final ActivityLifecycleCallbacks callback) {
+		if (SDK_INT >= ICE_CREAM_SANDWICH) mApplication.unregisterActivityLifecycleCallbacks(callback);
+	}
 
-	/** @deprecated Use {@link CondomOptions} instead */
-	@Deprecated public CondomContext preventBroadcastToBackgroundPackages(final boolean prevent_or_not) { mCondom.mExcludeBackgroundReceivers = prevent_or_not; return this; }
+	@Override public void registerOnProvideAssistDataListener(final OnProvideAssistDataListener callback) {
+		if (SDK_INT >= JELLY_BEAN_MR2) mApplication.registerOnProvideAssistDataListener(callback);
+	}
 
-	/** @deprecated Use {@link CondomOptions} instead */
-	@Deprecated public CondomContext preventServiceInBackgroundPackages(final boolean prevent_or_not) { if (SDK_INT < O) mCondom.mExcludeBackgroundServices = prevent_or_not; return this; }
+	@Override public void unregisterOnProvideAssistDataListener(final OnProvideAssistDataListener callback) {
+		if (SDK_INT >= JELLY_BEAN_MR2) mApplication.unregisterOnProvideAssistDataListener(callback);
+	}
+
+	// The actual context returned may not be semantically consistent. Let's keep an eye for it in the wild.
+	@Override public Context getBaseContext() {
+		mCondom.logConcern(TAG, "Application.getBaseContext");
+		return super.getBaseContext();
+	}
+
+	@Override protected void attachBaseContext(final Context base) { super.attachBaseContext(base); }
 
 	/* ****** Hooked Context APIs ****** */
 
 	@Override public boolean bindService(final Intent intent, final ServiceConnection conn, final int flags) {
 		final boolean result = mCondom.proceed(OutboundType.BIND_SERVICE, intent, Boolean.FALSE, new CondomCore.WrappedValueProcedure<Boolean>() { @Override public Boolean proceed() {
-			return CondomContext.super.bindService(intent, conn, flags);
+			return mApplication.bindService(intent, conn, flags);
 		}});
 		if (result) mCondom.logIfOutboundPass(TAG, intent, CondomCore.getTargetPackage(intent), CondomCore.CondomEvent.BIND_PASS);
 		return result;
@@ -111,7 +93,7 @@ public class CondomContext extends ContextWrapper {
 
 	@Override public ComponentName startService(final Intent intent) {
 		final ComponentName component = mCondom.proceed(OutboundType.START_SERVICE, intent, null, new CondomCore.WrappedValueProcedure<ComponentName>() { @Override public ComponentName proceed() {
-			return CondomContext.super.startService(intent);
+			return mApplication.startService(intent);
 		}});
 		if (component != null) mCondom.logIfOutboundPass(TAG, intent, component.getPackageName(), CondomCore.CondomEvent.START_PASS);
 		return component;
@@ -119,73 +101,73 @@ public class CondomContext extends ContextWrapper {
 
 	@Override public void sendBroadcast(final Intent intent) {
 		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
-			CondomContext.super.sendBroadcast(intent);
+			mApplication.sendBroadcast(intent);
 		}}, null);
 	}
 
 	@Override public void sendBroadcast(final Intent intent, final String receiverPermission) {
 		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
-			CondomContext.super.sendBroadcast(intent, receiverPermission);
+			mApplication.sendBroadcast(intent, receiverPermission);
 		}}, null);
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @SuppressLint("MissingPermission") @Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user) {
 		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
-			CondomContext.super.sendBroadcastAsUser(intent, user);
+			mApplication.sendBroadcastAsUser(intent, user);
 		}}, null);
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @SuppressLint("MissingPermission") @Override
 	public void sendBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission) {
 		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
-			CondomContext.super.sendBroadcastAsUser(intent, user, receiverPermission);
+			mApplication.sendBroadcastAsUser(intent, user, receiverPermission);
 		}}, null);
 	}
 
 	@Override public void sendOrderedBroadcast(final Intent intent, final String receiverPermission) {
 		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
-			CondomContext.super.sendOrderedBroadcast(intent, receiverPermission);
+			mApplication.sendOrderedBroadcast(intent, receiverPermission);
 		}}, null);
 	}
 
 	@Override public void sendOrderedBroadcast(final Intent intent, final String receiverPermission, final BroadcastReceiver resultReceiver,
 											   final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
 		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
-			CondomContext.super.sendOrderedBroadcast(intent, receiverPermission, resultReceiver, scheduler, initialCode, initialData, initialExtras);
+			mApplication.sendOrderedBroadcast(intent, receiverPermission, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 		}}, resultReceiver);
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @SuppressLint("MissingPermission") @Override
 	public void sendOrderedBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission,
-			final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
+										   final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
 		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
-			CondomContext.super.sendOrderedBroadcastAsUser(intent, user, receiverPermission, resultReceiver, scheduler, initialCode, initialData, initialExtras);
+			mApplication.sendOrderedBroadcastAsUser(intent, user, receiverPermission, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 		}}, resultReceiver);
 	}
 
 	@Override @SuppressLint("MissingPermission") public void sendStickyBroadcast(final Intent intent) {
 		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
-			CondomContext.super.sendStickyBroadcast(intent);
+			mApplication.sendStickyBroadcast(intent);
 		}}, null);
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @SuppressLint("MissingPermission") @Override public void sendStickyBroadcastAsUser(final Intent intent, final UserHandle user) {
 		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
-			CondomContext.super.sendStickyBroadcastAsUser(intent, user);
+			mApplication.sendStickyBroadcastAsUser(intent, user);
 		}}, null);
 	}
 
 	@Override @SuppressLint("MissingPermission") public void sendStickyOrderedBroadcast(final Intent intent, final BroadcastReceiver resultReceiver,
-			final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
+																						final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
 		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
-			CondomContext.super.sendStickyOrderedBroadcast(intent, resultReceiver, scheduler, initialCode, initialData, initialExtras);
+			mApplication.sendStickyOrderedBroadcast(intent, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 		}}, resultReceiver);
 	}
 
 	@RequiresApi(JELLY_BEAN_MR1) @SuppressLint("MissingPermission") @Override
 	public void sendStickyOrderedBroadcastAsUser(final Intent intent, final UserHandle user, final BroadcastReceiver resultReceiver, final Handler scheduler, final int initialCode, final String initialData, final Bundle initialExtras) {
 		mCondom.proceedBroadcast(this, intent, new CondomCore.WrappedProcedure() { @Override public void run() {
-			CondomContext.super.sendStickyOrderedBroadcastAsUser(intent, user, resultReceiver, scheduler, initialCode, initialData, initialExtras);
+			mApplication.sendStickyOrderedBroadcastAsUser(intent, user, resultReceiver, scheduler, initialCode, initialData, initialExtras);
 		}}, resultReceiver);
 	}
 
@@ -205,34 +187,15 @@ public class CondomContext extends ContextWrapper {
 
 	@Override public ContentResolver getContentResolver() { return mCondom.getContentResolver(); }
 	@Override public PackageManager getPackageManager() { return mCondom.getPackageManager(); }
-	@Override public Context getApplicationContext() { return mApplicationContext; }
-	@Override public Context getBaseContext() {
-		mCondom.logConcern(TAG, "getBaseContext");
-		return mBaseContext.get();
-	}
+	@Override public Context getApplicationContext() { return this; }
 
-	/* ********************************* */
-
-	private CondomContext(final CondomCore condom, final @Nullable Context app_context, final @Nullable @Size(max=16) String tag) {
-		super(condom.mBase);
-		final Context base = condom.mBase;
+	CondomApplication(final CondomCore condom, final Application app, final @Nullable @Size(max = 13) String tag) {
 		mCondom = condom;
-		mApplicationContext = app_context != null ? app_context : this;
-		mBaseContext = new Lazy<Context>() { @Override protected Context create() {
-			return new PseudoContextImpl(CondomContext.this);
-		}};
-		TAG = CondomCore.buildLogTag("Condom", "Condom.", tag);
+		mApplication = app;
+		TAG = CondomCore.buildLogTag("CondomApp", "CondomApp.", tag);
 	}
 
-	CondomCore mCondom;
-	private final Context mApplicationContext;
-	private final Lazy<Context> mBaseContext;
-	final String TAG;
-
-	/* ****** Internal branch functionality ****** */
-
-	// This should act as what ContextImpl stands for in the naked Context structure.
-	private static class PseudoContextImpl extends PseudoContextWrapper {
-		public PseudoContextImpl(final CondomContext condom) { super(condom); }
-	}
+	private final CondomCore mCondom;
+	private final Application mApplication;
+	private final String TAG;
 }

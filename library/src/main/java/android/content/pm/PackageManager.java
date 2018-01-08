@@ -36,7 +36,10 @@ import java.util.List;
 
 public abstract class PackageManager {
 
-	public static class NameNotFoundException extends AndroidException {}
+	public static class NameNotFoundException extends AndroidException {
+		public NameNotFoundException() {}
+		public NameNotFoundException(final String name) { super(name); }
+	}
 
 	/** @hide */ //@SystemApi
 	public interface OnPermissionsChangedListener {
