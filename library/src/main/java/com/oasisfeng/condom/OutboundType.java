@@ -42,6 +42,10 @@ public enum OutboundType {
 	QUERY_SERVICES,
 	/** @see PackageManager#queryBroadcastReceivers(Intent, int) */
 	QUERY_RECEIVERS,
+	/** @see PackageManager#getPackagesForUid(int) */
+	QUERY_PACKAGES,
+	/** @see PackageManager#getApplicationInfo(String, int)  */
+	GET_APPLICATION_INFO,
 	/** @see PackageManager#getPackageInfo(String, int) */
 	GET_PACKAGE_INFO,
 	/** @see PackageManager#checkPermission(String, String) */

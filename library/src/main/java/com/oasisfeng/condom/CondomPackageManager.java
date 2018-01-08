@@ -25,6 +25,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.ProviderInfo;
 import android.content.pm.ResolveInfo;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 
 import java.util.ArrayList;
@@ -100,6 +101,14 @@ class CondomPackageManager extends PackageManagerWrapper {
 		return super.getInstalledApplications(flags);
 	}
 
+	@Override public ApplicationInfo getApplicationInfo(final String pkg, final int flags) throws NameNotFoundException {
+		return mCondom.proceed(OutboundType.GET_APPLICATION_INFO, pkg, null, new CondomCore.WrappedValueProcedureThrows<ApplicationInfo, NameNotFoundException>() {
+			@Override public ApplicationInfo proceed() throws NameNotFoundException {
+				return CondomPackageManager.super.getApplicationInfo(pkg, flags);
+			}
+		});
+	}
+
 	@Override public PackageInfo getPackageInfo(final String pkg, final int flags) throws NameNotFoundException {
 		final PackageInfo info = mCondom.proceed(OutboundType.GET_PACKAGE_INFO, pkg, null, new CondomCore.WrappedValueProcedureThrows<PackageInfo, NameNotFoundException>() {
 			@Override public PackageInfo proceed() throws NameNotFoundException {
@@ -127,6 +136,20 @@ class CondomPackageManager extends PackageManagerWrapper {
 			}
 		}
 		return info;
+	}
+
+	@Nullable @Override public String[] getPackagesForUid(final int uid) {
+		final List<String> result = mCondom.proceedQuery(OutboundType.QUERY_PACKAGES, null, new CondomCore.WrappedValueProcedure<List<String>>() {
+			@Override public @Nullable List<String> proceed() {
+				final String[] result = CondomPackageManager.super.getPackagesForUid(uid);
+				return result != null ? Arrays.asList(result) : null;
+			}
+		}, new CondomCore.Function<String, String>() {
+			@Override public String apply(final String pkg) {
+				return pkg;
+			}
+		});
+		return result != null && ! result.isEmpty() ? result.toArray(new String[0]) : null;
 	}
 
 	@Override public int checkPermission(final String permName, final String pkgName) {
