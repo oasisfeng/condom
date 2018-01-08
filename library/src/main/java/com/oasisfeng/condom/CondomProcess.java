@@ -106,6 +106,15 @@ public class CondomProcess {
 		if ((app.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0) validateProcessNames(app, process_names);
 	}
 
+	/**
+	 * Install the condom protection for current process. This method should generally never be called in the main process of app.
+	 *
+	 * <p>It is suggested to use {@link android.content.ContentProvider ContentProvider} with "android:process", to install it in specified process.
+	 */
+	public static void installInCurrentProcess(final Application app, final String tag, final CondomOptions options) {
+		install(app, tag, options);
+	}
+
 	private static void validateCondomOptions(final CondomOptions options) {
 		if (options.mKits != null && ! options.mKits.isEmpty())
 			throw new IllegalArgumentException("CondomKit is not yet compatible with CondomProcess. " +
@@ -204,7 +213,6 @@ public class CondomProcess {
 		}
 	}
 
-	/** */
 	@SuppressLint("PrivateApi") private static void installCondomProcessPackageManager(final CondomCore condom)
 			throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
 		final Class<?> ActivityThread = Class.forName("android.app.ActivityThread");
