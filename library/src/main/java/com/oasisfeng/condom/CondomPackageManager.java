@@ -48,11 +48,7 @@ class CondomPackageManager extends PackageManagerWrapper {
 			@Override public List<ResolveInfo> proceed() {
 				return CondomPackageManager.super.queryBroadcastReceivers(intent, flags);
 			}
-		}, new CondomCore.Function<ResolveInfo, String>() {
-			@Override public String apply(final ResolveInfo resolve) {
-				return resolve.activityInfo.packageName;
-			}
-		});
+		}, CondomCore.RECEIVER_PACKAGE_GETTER);
 	}
 
 	@Override public List<ResolveInfo> queryIntentServices(final Intent intent, final int flags) {
@@ -63,11 +59,7 @@ class CondomPackageManager extends PackageManagerWrapper {
 				mCondom.filterCandidates(OutboundType.QUERY_SERVICES, intent.setFlags(original_intent_flags), result, TAG, true);
 				return result;
 			}
-		}, new CondomCore.Function<ResolveInfo, String>() {
-			@Override public String apply(final ResolveInfo resolve) {
-				return resolve.serviceInfo.packageName;
-			}
-		});
+		}, CondomCore.SERVICE_PACKAGE_GETTER);
 	}
 
 	@Override public ResolveInfo resolveService(final Intent intent, final int flags) {
@@ -144,11 +136,7 @@ class CondomPackageManager extends PackageManagerWrapper {
 				final String[] result = CondomPackageManager.super.getPackagesForUid(uid);
 				return result != null ? Arrays.asList(result) : null;
 			}
-		}, new CondomCore.Function<String, String>() {
-			@Override public String apply(final String pkg) {
-				return pkg;
-			}
-		});
+		}, IDENTITY_FUNCTION);
 		return result != null && ! result.isEmpty() ? result.toArray(new String[0]) : null;
 	}
 
@@ -173,4 +161,7 @@ class CondomPackageManager extends PackageManagerWrapper {
 
 	private final CondomCore mCondom;
 	private final String TAG;
+	private static final CondomCore.Function<String,String> IDENTITY_FUNCTION = new CondomCore.Function<String, String>() {
+		@Override public String apply(final String s) { return s; }
+	};
 }

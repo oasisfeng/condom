@@ -164,7 +164,7 @@ public class CondomProcess {
 
 	private static void install(final Application app, final String process_name_or_tag, final CondomOptions options) {
 		final int pos_colon = process_name_or_tag.indexOf(':');
-		final String tag = pos_colon > 0 ? process_name_or_tag.substring(pos_colon) : process_name_or_tag;
+		final String tag = pos_colon > 0 ? process_name_or_tag.substring(pos_colon + 1) : process_name_or_tag;
 		FULL_TAG = "Condom:" + tag;
 		TAG = CondomCore.asLogTag(FULL_TAG);
 
@@ -316,11 +316,7 @@ public class CondomProcess {
 					@Override public List<ResolveInfo> proceed() throws Exception {
 						return asList(result);
 					}
-				}, new CondomCore.Function<ResolveInfo, String>() {
-					@Override public String apply(final ResolveInfo resolve) {
-						return resolve.activityInfo.packageName;
-					}
-				});
+				}, outbound_type == OutboundType.QUERY_SERVICES ? CondomCore.SERVICE_PACKAGE_GETTER : CondomCore.RECEIVER_PACKAGE_GETTER);	// Both "queryIntentServices" and "queryIntentReceivers" reach here.
 				if (list.isEmpty()) asList(result).clear();	// In case Collections.emptyList() is returned due to targeted query being rejected by outbound judge.
 				return result;
 

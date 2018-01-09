@@ -73,37 +73,6 @@ import static android.os.Build.VERSION_CODES.O;
 @Keep @RestrictTo(RestrictTo.Scope.LIBRARY) @SuppressWarnings("TypeParameterHidesVisibleType")
 class CondomCore {
 
-	Object getSystemService(final String name) {
-		if (mKitManager != null) {
-			final CondomKit.SystemServiceSupplier supplier = mKitManager.mSystemServiceSuppliers.get(name);
-			if (supplier != null) {
-				final Object service = supplier.getSystemService(mBase, name);
-				if (service != null) return service;
-			}
-		}
-		return null;
-	}
-
-	boolean shouldSpoofPermission(final String permission) {
-		return mKitManager != null && mKitManager.mSpoofPermissions.contains(permission);
-	}
-
-	Set<String> getSpoofPermissions() {
-		return mKitManager != null ? mKitManager.mSpoofPermissions : Collections.<String>emptySet();
-	}
-
-	ContentResolver getContentResolver() {
-		return mContentResolver.get();
-	}
-
-	PackageManager getPackageManager() {
-		return mPackageManager.get();
-	}
-
-	String getPackageName() {
-		return mBase.getPackageName();
-	}
-
 	interface WrappedValueProcedure<R> extends WrappedValueProcedureThrows<R, RuntimeException> {}
 
 	interface WrappedValueProcedureThrows<R, T extends Throwable> { @Nullable R proceed() throws T; }
@@ -112,6 +81,10 @@ class CondomCore {
 		abstract void run();
 		@Override public Boolean proceed() { run(); return null; }
 	}
+
+	ContentResolver getContentResolver() { return mContentResolver.get(); }
+	PackageManager getPackageManager() { return mPackageManager.get(); }
+	String getPackageName() { return mBase.getPackageName(); }
 
 	void proceedBroadcast(final Context context, final Intent intent, final WrappedValueProcedure<Boolean> procedure,
 						  final @Nullable BroadcastReceiver resultReceiver) {
@@ -224,6 +197,25 @@ class CondomCore {
 		return shouldAllowProvider(context.getPackageManager().resolveContentProvider(name, flags));
 	}
 
+	Object getSystemService(final String name) {
+		if (mKitManager != null) {
+			final CondomKit.SystemServiceSupplier supplier = mKitManager.mSystemServiceSuppliers.get(name);
+			if (supplier != null) {
+				final Object service = supplier.getSystemService(mBase, name);
+				if (service != null) return service;
+			}
+		}
+		return null;
+	}
+
+	boolean shouldSpoofPermission(final String permission) {
+		return mKitManager != null && mKitManager.mSpoofPermissions.contains(permission);
+	}
+
+	Set<String> getSpoofPermissions() {
+		return mKitManager != null ? mKitManager.mSpoofPermissions : Collections.<String>emptySet();
+	}
+
 	enum CondomEvent { CONCERN, BIND_PASS, START_PASS, FILTER_BG_SERVICE }
 
 	private void log(final String tag, final CondomEvent event, final String... args) {
@@ -295,6 +287,17 @@ class CondomCore {
 	private final Lazy<PackageManager> mPackageManager;
 	private final Lazy<ContentResolver> mContentResolver;
 	private final @Nullable CondomKitManager mKitManager;
+
+	static final Function<ResolveInfo,String> SERVICE_PACKAGE_GETTER = new Function<ResolveInfo, String>() {
+		@Override public String apply(final ResolveInfo resolve) {
+			return resolve.serviceInfo.packageName;
+		}
+	};
+	static final Function<ResolveInfo,String> RECEIVER_PACKAGE_GETTER = new Function<ResolveInfo, String>() {
+		@Override public String apply(final ResolveInfo resolve) {
+			return resolve.activityInfo.packageName;
+		}
+	};
 
 	private static final int EVENT_TAG = "Condom".hashCode();
 
