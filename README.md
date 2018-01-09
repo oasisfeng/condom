@@ -101,9 +101,9 @@ That's all! Just have the confidence of condom, to protect your users from untru
        ...
      }
    }
-   ```
+   ```
 
-如果需要注入 CondomProcess 的进程是明确且单一的，还可以使用另一种初始化方式：定义一个使用相同进程（"android:process"）的 ContentProvider，并在其 onCreate() 方法中调用 `CondomProcess.installInCurrentProcess((Application) context().getApplicationContext(), ...)`。它避免了查询进程名的开销，相比上面两个初始化方法更为高效。
+如果需要注入 CondomProcess 的进程是明确且单一的，还可以使用另一种初始化方式：定义一个使用相同进程（"android:process"）的 ContentProvider，并在其 onCreate() 方法中调用 `CondomProcess.installInCurrentProcess((Application) context().getApplicationContext(), ...)` 。它避免了查询进程名的开销，相比上面两个初始化方法更为高效。
 
 完成以上的简单修改后，三方 SDK 就无法再使用这个套上了保险套的 `Context` 去唤醒当前并没有进程在运行的其它应用。（已有进程在运行中的应用仍可以被关联调用，由于此时不存在大量进程连锁创建的巨大资源开销，因此是被允许的）
 
