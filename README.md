@@ -63,7 +63,7 @@ That's all! Just have the confidence of condom, to protect your users from untru
    compile 'com.oasisfeng.condom:library:2.2.0'
    ```
 
-   对于非Gradle工程，请[下载AAR文件](http://jcenter.bintray.com/com/oasisfeng/condom/library/)放进项目模块本地的 `libs` 路径中，并在工程的 ProGuard 配置文件中增加以下规则：（Gradle工程和不使用ProGuard的工程不需要这一步）
+   对于非 Gradle 工程，请[下载AAR文件](http://jcenter.bintray.com/com/oasisfeng/condom/library/)放进项目模块本地的 `libs` 路径中，并在工程的 ProGuard 配置文件中增加以下规则：（Gradle 工程和不使用 ProGuard 的工程不需要这一步）
 
    ```
    -dontwarn com.oasisfeng.condom.CondomContext$CondomContentResolver
@@ -91,7 +91,7 @@ That's all! Just have the confidence of condom, to protect your users from untru
 
    其中参数 `tag`（上例中的"XxxSDK"）为开发者根据需要指定的用于区分多个不同 `CondomContext` 实例的标识，将出现在日志的TAG后缀。如果只有一个 `CondomContext` 实例，或者不需要区分，则传入 `null` 亦可。
 
-3. 如果三方SDK含有自己的组件（Activity、Service、Receiver 或 Provider），为防止这些组件内的有害行为，还需要确保这些组件的工作进程与应用自己的进程隔离（`android:process` 使用非应用自有组件的进程名），并在应用的 `Application.onCreate()` 起始部分调用 `CondomProcess.installExceptDefaultProcess(this)` 或 `CondomProcess.installExcept(this, ...)`，如下所示：
+3. 如果三方 SDK 含有自己的组件（Activity、Service、Receiver 或 Provider），为防止这些组件内的有害行为，还需要确保这些组件的工作进程与应用自己的进程隔离（`android:process` 使用非应用自有组件的进程名），并在应用的 `Application.onCreate()` 起始部分调用 `CondomProcess.installExceptDefaultProcess(this)` 或 `CondomProcess.installExcept(this, ...)`，如下所示：
 
    ```
    public class MyApplication extends Application {
@@ -103,7 +103,17 @@ That's all! Just have the confidence of condom, to protect your users from untru
    }
    ```
 
-如果需要注入 CondomProcess 的进程是明确且单一的，还可以使用另一种初始化方式：定义一个使用相同进程（"android:process"）的 ContentProvider，并在其 onCreate() 方法中调用 `CondomProcess.installInCurrentProcess((Application) context().getApplicationContext(), ...)` 。它避免了查询进程名的开销，相比上面两个初始化方法更为高效。
+   如果需要注入 CondomProcess 的进程是明确且单一的，还可以使用另一种初始化方式：定义一个使用相同进程（"android:process"）的 ContentProvider，并在其 onCreate() 方法中调用 `CondomProcess.installInCurrentProcess((Application) context().getApplicationContext(), ...)` 。它避免了查询进程名的开销，相比上面两个初始化方法更为高效。
+
+4. 如果需要在 layout XML 中使用第三方 SDK 提供的定制 View，建议使用 `LayoutInflater.cloneInContext()` 创建一个受 Condom 保护的 `LayoutInflater` 进行布局加载。
+
+   如果使用 support-fragment 库，则还可以更进一步简化为重载 `Fragment.onGetLayoutInflater()` 方法：
+
+   ```
+   @Override public LayoutInflater onGetLayoutInflater() {
+       return super.onGetLayoutInflater().cloneInContext(CondomContext.wrap(getContext(), "...SDK"));
+   }
+   ```
 
 完成以上的简单修改后，三方 SDK 就无法再使用这个套上了保险套的 `Context` 去唤醒当前并没有进程在运行的其它应用。（已有进程在运行中的应用仍可以被关联调用，由于此时不存在大量进程连锁创建的巨大资源开销，因此是被允许的）
 
