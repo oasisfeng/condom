@@ -40,6 +40,8 @@ import java.util.List;
 import static android.os.Build.VERSION_CODES.HONEYCOMB;
 import static android.os.Build.VERSION_CODES.KITKAT;
 import static android.os.Build.VERSION_CODES.N;
+import static android.os.Build.VERSION_CODES.P;
+import static android.support.annotation.RestrictTo.Scope.LIBRARY;
 
 /**
  * Delegation wrapper of {@link ContentResolver}
@@ -80,6 +82,10 @@ class ContentResolverWrapper extends ContentResolver {
 
 	@Override @RequiresApi(KITKAT) public void takePersistableUriPermission(@NonNull Uri uri, int modeFlags) {
 		mBase.takePersistableUriPermission(uri, modeFlags);
+	}
+
+	@RequiresApi(P) @Override public void takePersistableUriPermission(String toPackage, Uri uri, int modeFlags) {
+		mBase.takePersistableUriPermission(toPackage, uri, modeFlags);
 	}
 
 	@Override @RequiresApi(KITKAT) public void releasePersistableUriPermission(@NonNull Uri uri, int modeFlags) {

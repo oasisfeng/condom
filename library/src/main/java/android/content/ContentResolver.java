@@ -29,6 +29,7 @@ import java.util.List;
 
 import static android.os.Build.VERSION_CODES.KITKAT;
 import static android.os.Build.VERSION_CODES.N;
+import static android.os.Build.VERSION_CODES.P;
 
 /**
  * Stub class of real ContentResolver, only for compilation purpose.
@@ -75,6 +76,11 @@ public abstract class ContentResolver {
 	}
 
 	@RequiresApi(KITKAT) public void takePersistableUriPermission(Uri uri, int modeFlags) {
+		throw new RuntimeException("Stub!");
+	}
+
+	/** @hide */
+	@RequiresApi(P) public void takePersistableUriPermission(String toPackage, Uri uri, int modeFlags) {
 		throw new RuntimeException("Stub!");
 	}
 
