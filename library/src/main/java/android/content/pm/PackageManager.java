@@ -28,12 +28,16 @@ import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.UserHandle;
+import android.support.annotation.RequiresApi;
 import android.support.annotation.RequiresPermission;
 import android.util.AndroidException;
 
 import java.util.List;
 
+import static android.os.Build.VERSION_CODES.O_MR1;
+import static android.os.Build.VERSION_CODES.P;
 
+/** Stub class for real PackageManager, only contains APIs (including hidden) for regular app (without privileges). */
 public abstract class PackageManager {
 
 	public static class NameNotFoundException extends AndroidException {
@@ -112,6 +116,8 @@ public abstract class PackageManager {
 	public abstract String[] getPackagesForUid(int uid);
 	public abstract String getNameForUid(int uid);
 	/** @hide */
+	@RequiresApi(O_MR1) public abstract String[] getNamesForUids(int[] uids);
+	/** @hide */
 	public abstract int getUidForSharedUser(String sharedUserName) throws NameNotFoundException;
 	public abstract List<ApplicationInfo> getInstalledApplications(int flags);
 	public abstract boolean isInstantApp();
@@ -157,6 +163,8 @@ public abstract class PackageManager {
 	/** @hide */ @Deprecated
 	public List<ResolveInfo> queryBroadcastReceivers(Intent intent, int flags, int userId) { throw new UnsupportedOperationException(); }
 	public abstract ResolveInfo resolveService(Intent intent, int flags);
+	/** @hide */
+	@RequiresApi(P) public abstract ResolveInfo resolveServiceAsUser(Intent intent, int flags, int userId);
 	public abstract List<ResolveInfo> queryIntentServices(Intent intent, int flags);
 	/** @hide */
 	public abstract List<ResolveInfo> queryIntentServicesAsUser(Intent intent, int flags, int userId);
@@ -302,6 +310,8 @@ public abstract class PackageManager {
 	public abstract boolean isSignedByExactly(String packageName, KeySet ks);
 	/** @hide */
 	public abstract String[] setPackagesSuspendedAsUser(String[] packageNames, boolean suspended, int userId);
+	@RequiresApi(P) public boolean isPackageSuspended() { throw new UnsupportedOperationException("isPackageSuspended not implemented"); }
+	@RequiresApi(P) public Bundle getSuspendedPackageAppExtras() { throw new UnsupportedOperationException("getSuspendedPackageAppExtras not implemented"); }
 	/** @hide */
 	public abstract boolean isPackageSuspendedForUser(String packageName, int userId);
 	/** @hide */
@@ -358,4 +368,8 @@ public abstract class PackageManager {
 	public static int deleteStatusToPublicStatus(int status) { throw new UnsupportedOperationException(); }
 	/** @hide */
 	public static String permissionFlagToString(int flag) { throw new UnsupportedOperationException(); }
+	@RequiresApi(P) public boolean hasSigningCertificate(String packageName, byte[] certificate, int type) { throw new UnsupportedOperationException(); }
+	@RequiresApi(P) public boolean hasSigningCertificate(int uid, byte[] certificate, int type) { throw new UnsupportedOperationException(); }
+	/** @hide */ @RequiresApi(P) public String getSystemTextClassifierPackageName() { throw new UnsupportedOperationException(); }
+	/** @hide */ @RequiresApi(P) public boolean isPackageStateProtected(String packageName, int userId) { throw new UnsupportedOperationException(); }
 }

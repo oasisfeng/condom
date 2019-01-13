@@ -46,6 +46,7 @@ import android.content.res.Resources;
 import android.content.res.XmlResourceParser;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.UserHandle;
 import android.support.annotation.Keep;
@@ -67,6 +68,8 @@ import static android.os.Build.VERSION_CODES.LOLLIPOP;
 import static android.os.Build.VERSION_CODES.M;
 import static android.os.Build.VERSION_CODES.N;
 import static android.os.Build.VERSION_CODES.O;
+import static android.os.Build.VERSION_CODES.O_MR1;
+import static android.os.Build.VERSION_CODES.P;
 
 /**
  * Delegation wrapper of {@link PackageManager}
@@ -255,6 +258,11 @@ class PackageManagerWrapper extends PackageManager {
 	}
 
 	/** @hide */
+	@RequiresApi(O_MR1) @Override @Nullable public String[] getNamesForUids(int[] uids) {
+		return mBase.getNamesForUids(uids);
+	}
+
+	/** @hide */
 	@Override public int getUidForSharedUser(String sharedUserName) throws NameNotFoundException {
 		return mBase.getUidForSharedUser(sharedUserName);
 	}
@@ -389,6 +397,11 @@ class PackageManagerWrapper extends PackageManager {
 
 	@Override public ResolveInfo resolveService(Intent intent, int flags) {
 		return mBase.resolveService(intent, flags);
+	}
+
+	/** @hide */
+	@Override public ResolveInfo resolveServiceAsUser(Intent intent, int flags, int userId) {
+		return mBase.resolveServiceAsUser(intent, flags, userId);
 	}
 
 	@Override public List<ResolveInfo> queryIntentServices(Intent intent, int flags) {
@@ -785,6 +798,14 @@ class PackageManagerWrapper extends PackageManager {
 		return mBase.setPackagesSuspendedAsUser(packageNames, suspended, userId);
 	}
 
+	@RequiresApi(P) @Override public boolean isPackageSuspended() {
+		return mBase.isPackageSuspended();
+	}
+
+	@RequiresApi(P) @Override public Bundle getSuspendedPackageAppExtras() {
+		return mBase.getSuspendedPackageAppExtras();
+	}
+
 	/** @hide */
 	@Override public boolean isPackageSuspendedForUser(String packageName, int userId) {
 		return mBase.isPackageSuspendedForUser(packageName, userId);
@@ -834,6 +855,15 @@ class PackageManagerWrapper extends PackageManager {
 	@Override public boolean isPackageAvailable(String packageName) {
 		return mBase.isPackageAvailable(packageName);
 	}
+
+	@RequiresApi(P) @Override public boolean hasSigningCertificate(String packageName, byte[] certificate, int type) {
+		return mBase.hasSigningCertificate(packageName, certificate, type);
+	}
+
+	/** @hide */
+	@RequiresApi(P) public String getSystemTextClassifierPackageName() { return mBase.getSystemTextClassifierPackageName(); }
+	/** @hide */
+	@RequiresApi(P) public boolean isPackageStateProtected(String packageName, int userId) { return mBase.isPackageStateProtected(packageName, userId); }
 
 	private PackageManager mBase;
 }
