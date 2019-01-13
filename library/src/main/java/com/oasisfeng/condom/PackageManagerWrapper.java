@@ -21,13 +21,10 @@ import android.Manifest;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.IntentSender;
 import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.ChangedPackages;
 import android.content.pm.FeatureInfo;
-import android.content.pm.IPackageDataObserver;
-import android.content.pm.IPackageDeleteObserver;
 import android.content.pm.IPackageStatsObserver;
 import android.content.pm.InstrumentationInfo;
 import android.content.pm.KeySet;
@@ -47,7 +44,6 @@ import android.content.res.XmlResourceParser;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.UserHandle;
 import android.support.annotation.Keep;
 import android.support.annotation.NonNull;
@@ -211,26 +207,6 @@ class PackageManagerWrapper extends PackageManager {
 		mBase.removePermission(name);
 	}
 
-	/** @hide */ //@SystemApi
-	@Override public void grantRuntimePermission(String packageName, String permissionName, UserHandle user) {
-		mBase.grantRuntimePermission(packageName, permissionName, user);
-	}
-
-	/** @hide */ //@SystemApi
-	@Override public void revokeRuntimePermission(String packageName, String permissionName, UserHandle user) {
-		mBase.revokeRuntimePermission(packageName, permissionName, user);
-	}
-
-	/** @hide */ //@SystemApi
-	@Override public int getPermissionFlags(String permissionName, String packageName, UserHandle user) {
-		return mBase.getPermissionFlags(permissionName, packageName, user);
-	}
-
-	/** @hide */ //@SystemApi
-	@Override public void updatePermissionFlags(String permissionName, String packageName, int flagMask, int flagValues, UserHandle user) {
-		mBase.updatePermissionFlags(permissionName, packageName, flagMask, flagValues, user);
-	}
-
 	/** @hide */
 	@Override public boolean shouldShowRequestPermissionRationale(String permission) {
 		return mBase.shouldShowRequestPermissionRationale(permission);
@@ -293,31 +269,6 @@ class PackageManagerWrapper extends PackageManager {
 
 	@RequiresApi(O) @Override public void updateInstantAppCookie(byte[] cookie) {
 		mBase.updateInstantAppCookie(cookie);
-	}
-
-	/** @hide */
-	@Override public Drawable getEphemeralApplicationIcon(String packageName) {
-		return mBase.getEphemeralApplicationIcon(packageName);
-	}
-
-	/** @hide */
-	@Override public boolean isEphemeralApplication() {
-		return mBase.isEphemeralApplication();
-	}
-
-	/** @hide */
-	@Override public int getEphemeralCookieMaxSizeBytes() {
-		return mBase.getEphemeralCookieMaxSizeBytes();
-	}
-
-	/** @hide */
-	@Override public byte[] getEphemeralCookie() {
-		return mBase.getEphemeralCookie();
-	}
-
-	/** @hide */
-	@Override public boolean setEphemeralCookie(byte[] cookie) {
-		return mBase.setEphemeralCookie(cookie);
 	}
 
 	@Override public String[] getSystemSharedLibraryNames() {
@@ -558,17 +509,6 @@ class PackageManagerWrapper extends PackageManager {
 		return mBase.getPackageArchiveInfo(archiveFilePath, flags);
 	}
 
-	/** @hide */
-	@Override public int installExistingPackage(String packageName) throws NameNotFoundException {
-		return mBase.installExistingPackage(packageName);
-	}
-
-	/** @hide */
-	@RequiresPermission(anyOf = { Manifest.permission.INSTALL_PACKAGES/*, Manifest.permission.INTERACT_ACROSS_USERS_FULL */})
-	@Override public int installExistingPackageAsUser(String packageName, int userId) throws NameNotFoundException {
-		return mBase.installExistingPackageAsUser(packageName, userId);
-	}
-
 	@RequiresApi(ICE_CREAM_SANDWICH) @Override public void verifyPendingInstall(int id, int verificationCode) {
 		mBase.verifyPendingInstall(id, verificationCode);
 	}
@@ -577,34 +517,9 @@ class PackageManagerWrapper extends PackageManager {
 		mBase.extendVerificationTimeout(id, verificationCodeAtTimeout, millisecondsToDelay);
 	}
 
-	/** @hide */ //@SystemApi
-	 public void verifyIntentFilter(int verificationId, int verificationCode, List<String> failedDomains) {
-		mBase.verifyIntentFilter(verificationId, verificationCode, failedDomains);
-	}
-
-	/** @hide */
-	@Override public int getIntentVerificationStatusAsUser(String packageName, int userId) {
-		return mBase.getIntentVerificationStatusAsUser(packageName, userId);
-	}
-
-	/** @hide */
-	@Override public boolean updateIntentVerificationStatusAsUser(String packageName, int status, int userId) {
-		return mBase.updateIntentVerificationStatusAsUser(packageName, status, userId);
-	}
-
 	/** @hide */
 	@Override public List<IntentFilter> getAllIntentFilters(String packageName) {
 		return mBase.getAllIntentFilters(packageName);
-	}
-
-	/** @hide */ //@TestApi
-	public String getDefaultBrowserPackageNameAsUser(int userId) {
-		return mBase.getDefaultBrowserPackageNameAsUser(userId);
-	}
-
-	/** @hide */
-	@Override public boolean setDefaultBrowserPackageNameAsUser(String packageName, int userId) {
-		return mBase.setDefaultBrowserPackageNameAsUser(packageName, userId);
 	}
 
 	@RequiresApi(HONEYCOMB) @Override public void setInstallerPackageName(String targetPackage, String installerPackageName) {
@@ -614,52 +529,6 @@ class PackageManagerWrapper extends PackageManager {
 	@RequiresPermission(Manifest.permission.DELETE_PACKAGES)
 	@Override public String getInstallerPackageName(String packageName) {
 		return mBase.getInstallerPackageName(packageName);
-	}
-
-	/** @hide */
-	@Override public void deletePackage(String packageName, IPackageDeleteObserver observer, int flags) {
-		mBase.deletePackage(packageName, observer, flags);
-	}
-
-	/** @hide */
-	@RequiresPermission(Manifest.permission.DELETE_PACKAGES)
-	@Override public void deletePackageAsUser(String packageName, IPackageDeleteObserver observer, int flags, int userId) {
-		mBase.deletePackageAsUser(packageName, observer, flags, userId);
-	}
-
-	/** @hide */
-	@Override public void clearApplicationUserData(String packageName, IPackageDataObserver observer) {
-		mBase.clearApplicationUserData(packageName, observer);
-	}
-
-	/** @hide */
-	@Override public void deleteApplicationCacheFiles(String packageName, IPackageDataObserver observer) {
-		mBase.deleteApplicationCacheFiles(packageName, observer);
-	}
-
-	/** @hide */
-	@Override public void deleteApplicationCacheFilesAsUser(String packageName, int userId, IPackageDataObserver observer) {
-		mBase.deleteApplicationCacheFilesAsUser(packageName, userId, observer);
-	}
-
-	/** @hide */
-	@Override public void freeStorageAndNotify(long freeStorageSize, IPackageDataObserver observer) {
-		mBase.freeStorageAndNotify(freeStorageSize, observer);
-	}
-
-	/** @hide */
-	@Override public void freeStorageAndNotify(String volumeUuid, long freeStorageSize, IPackageDataObserver observer) {
-		mBase.freeStorageAndNotify(volumeUuid, freeStorageSize, observer);
-	}
-
-	/** @hide */
-	@Override public void freeStorage(long freeStorageSize, IntentSender pi) {
-		mBase.freeStorage(freeStorageSize, pi);
-	}
-
-	/** @hide */
-	@Override public void freeStorage(String volumeUuid, long freeStorageSize, IntentSender pi) {
-		mBase.freeStorage(volumeUuid, freeStorageSize, pi);
 	}
 
 	/** @hide */
@@ -686,21 +555,6 @@ class PackageManagerWrapper extends PackageManager {
 
 	@Override public void addPreferredActivity(IntentFilter filter, int match, ComponentName[] set, ComponentName activity) {
 		mBase.addPreferredActivity(filter, match, set, activity);
-	}
-
-	/** @hide */
-	@Override public void addPreferredActivityAsUser(IntentFilter filter, int match, ComponentName[] set, ComponentName activity, int userId) {
-		mBase.addPreferredActivityAsUser(filter, match, set, activity, userId);
-	}
-
-	/** @hide */
-	@Override @Deprecated public void replacePreferredActivity(IntentFilter filter, int match, ComponentName[] set, ComponentName activity) {
-		mBase.replacePreferredActivity(filter, match, set, activity);
-	}
-
-	/** @hide */
-	@Override @Deprecated public void replacePreferredActivityAsUser(IntentFilter filter, int match, ComponentName[] set, ComponentName activity, int userId) {
-		mBase.replacePreferredActivityAsUser(filter, match, set, activity, userId);
 	}
 
 	@Override public void clearPackagePreferredActivities(String packageName) {
@@ -737,16 +591,6 @@ class PackageManagerWrapper extends PackageManager {
 		mBase.flushPackageRestrictionsAsUser(userId);
 	}
 
-	/** @hide */
-	@Override public boolean setApplicationHiddenSettingAsUser(String packageName, boolean hidden, UserHandle userHandle) {
-		return mBase.setApplicationHiddenSettingAsUser(packageName, hidden, userHandle);
-	}
-
-	/** @hide */
-	@Override public boolean getApplicationHiddenSettingAsUser(String packageName, UserHandle userHandle) {
-		return mBase.getApplicationHiddenSettingAsUser(packageName, userHandle);
-	}
-
 	@Override public boolean isSafeMode() {
 		return mBase.isSafeMode();
 	}
@@ -761,16 +605,6 @@ class PackageManagerWrapper extends PackageManager {
 
 	@RequiresApi(O) @Override public boolean canRequestPackageInstalls() {
 		return mBase.canRequestPackageInstalls();
-	}
-
-	/** @hide */ //@SystemApi
-	@Override  public void addOnPermissionsChangeListener(PackageManager.OnPermissionsChangedListener listener) {
-		mBase.addOnPermissionsChangeListener(listener);
-	}
-
-	/** @hide */ //@SystemApi
-	@Override public void removeOnPermissionsChangeListener(PackageManager.OnPermissionsChangedListener listener) {
-		mBase.removeOnPermissionsChangeListener(listener);
 	}
 
 	/** @hide */
@@ -793,11 +627,6 @@ class PackageManagerWrapper extends PackageManager {
 		return mBase.isSignedByExactly(packageName, ks);
 	}
 
-	/** @hide */
-	@Override public String[] setPackagesSuspendedAsUser(String[] packageNames, boolean suspended, int userId) {
-		return mBase.setPackagesSuspendedAsUser(packageNames, suspended, userId);
-	}
-
 	@RequiresApi(P) @Override public boolean isPackageSuspended() {
 		return mBase.isPackageSuspended();
 	}
@@ -812,33 +641,8 @@ class PackageManagerWrapper extends PackageManager {
 	}
 
 	/** @hide */
-	@Override public int getMoveStatus(int moveId) {
-		return mBase.getMoveStatus(moveId);
-	}
-
-	/** @hide */
-	@Override public void registerMoveCallback(PackageManager.MoveCallback callback, Handler handler) {
-		mBase.registerMoveCallback(callback, handler);
-	}
-
-	/** @hide */
-	@Override public void unregisterMoveCallback(PackageManager.MoveCallback callback) {
-		mBase.unregisterMoveCallback(callback);
-	}
-
-	/** @hide */
 	@Override public boolean isUpgrade() {
 		return mBase.isUpgrade();
-	}
-
-	/** @hide */
-	@Override public void addCrossProfileIntentFilter(IntentFilter filter, int sourceUserId, int targetUserId, int flags) {
-		mBase.addCrossProfileIntentFilter(filter, sourceUserId, targetUserId, flags);
-	}
-
-	/** @hide */
-	@Override public void clearCrossProfileIntentFilters(int sourceUserId) {
-		mBase.clearCrossProfileIntentFilters(sourceUserId);
 	}
 
 	/** @hide */

@@ -16,24 +16,21 @@
 
 package android.content.pm;
 
-import android.Manifest;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.IntentSender;
 import android.content.res.Resources;
 import android.content.res.XmlResourceParser;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.UserHandle;
 import android.support.annotation.RequiresApi;
-import android.support.annotation.RequiresPermission;
 import android.util.AndroidException;
 
 import java.util.List;
 
+import static android.os.Build.VERSION_CODES.N;
 import static android.os.Build.VERSION_CODES.O_MR1;
 import static android.os.Build.VERSION_CODES.P;
 
@@ -43,11 +40,6 @@ public abstract class PackageManager {
 	public static class NameNotFoundException extends AndroidException {
 		public NameNotFoundException() {}
 		public NameNotFoundException(final String name) { super(name); }
-	}
-
-	/** @hide */ //@SystemApi
-	public interface OnPermissionsChangedListener {
-		void onPermissionsChanged(int uid);
 	}
 
 	public static final int GET_ACTIVITIES              = 0x00000001;
@@ -99,14 +91,6 @@ public abstract class PackageManager {
 	public abstract boolean addPermission(PermissionInfo info);
 	public abstract boolean addPermissionAsync(PermissionInfo info);
 	public abstract void removePermission(String name);
-	/** @hide */ //@SystemApi
-	public abstract void grantRuntimePermission(String packageName, String permissionName, UserHandle user);
-	/** @hide */ //@SystemApi
-	public abstract void revokeRuntimePermission(String packageName, String permissionName, UserHandle user);
-	/** @hide */ //@SystemApi
-	public abstract int getPermissionFlags(String permissionName, String packageName, UserHandle user);
-	/** @hide */ //@SystemApi
-	public abstract void updatePermissionFlags(String permissionName, String packageName, int flagMask, int flagValues, UserHandle user);
 	/** @hide */
 	public abstract boolean shouldShowRequestPermissionRationale(String permission);
 	/** @hide */
@@ -126,18 +110,6 @@ public abstract class PackageManager {
 	public abstract byte[] getInstantAppCookie();
 	public abstract void clearInstantAppCookie();
 	public abstract void updateInstantAppCookie(final byte[] cookie);
-//	/** @hide */ @RequiresPermission(Manifest.permission.ACCESS_EPHEMERAL_APPS)
-//	public abstract List<EphemeralApplicationInfo> getEphemeralApplications();
-	/** @hide */
-	public abstract Drawable getEphemeralApplicationIcon(String packageName);
-	/** @hide */
-	public abstract boolean isEphemeralApplication();
-	/** @hide */
-	public abstract int getEphemeralCookieMaxSizeBytes();
-	/** @hide */
-	public abstract byte[] getEphemeralCookie();
-	/** @hide */
-	public abstract boolean setEphemeralCookie( byte[] cookie);
 	public abstract String[] getSystemSharedLibraryNames();
 	public abstract List<SharedLibraryInfo> getSharedLibraries(final int flags);
 	public abstract ChangedPackages getChangedPackages(final int sequenceNumber);
@@ -197,8 +169,8 @@ public abstract class PackageManager {
 	public abstract Drawable getApplicationLogo(ApplicationInfo info);
 	public abstract Drawable getApplicationLogo(String packageName)
 			throws NameNotFoundException;
-	/** @hide */
-	public abstract Drawable getManagedUserBadgedDrawable(Drawable drawable, Rect badgeLocation, int badgeDensity);
+	/** @hide Only on N ~ N_MR1 */
+	@RequiresApi(N) public abstract Drawable getManagedUserBadgedDrawable(Drawable drawable, Rect badgeLocation, int badgeDensity);
 	public abstract Drawable getUserBadgedIcon(Drawable icon, UserHandle user);
 	public abstract Drawable getUserBadgedDrawableForDensity(Drawable drawable, UserHandle user, Rect badgeLocation, int badgeDensity);
 	/** @hide */
@@ -214,50 +186,12 @@ public abstract class PackageManager {
 	public abstract Resources getResourcesForApplication(String appPackageName) throws NameNotFoundException;
 	public abstract Resources getResourcesForApplicationAsUser(String appPackageName, int userId) throws NameNotFoundException;
 	public PackageInfo getPackageArchiveInfo(String archiveFilePath, int flags) { throw new UnsupportedOperationException(); }
-//	/** @hide */ @Deprecated
-//	public abstract void installPackage(Uri packageURI, IPackageInstallObserver observer, int flags, String installerPackageName);
-//	/** @hide */ @Deprecated
-//	public abstract void installPackage(Uri packageURI, PackageInstallObserver observer, int flags, String installerPackageName);
-	/** @hide */
-	public abstract int installExistingPackage(String packageName) throws NameNotFoundException;
-	/** @hide */ //@RequiresPermission(anyOf = { Manifest.permission.INSTALL_PACKAGES, Manifest.permission.INTERACT_ACROSS_USERS_FULL })
-	public abstract int installExistingPackageAsUser(String packageName, int userId) throws NameNotFoundException;
 	public abstract void verifyPendingInstall(int id, int verificationCode);
 	public abstract void extendVerificationTimeout(int id, int verificationCodeAtTimeout, long millisecondsToDelay);
-	/** @hide */ //@SystemApi
-	public abstract void verifyIntentFilter(int verificationId, int verificationCode, List<String> failedDomains);
-	/** @hide */
-	public abstract int getIntentVerificationStatusAsUser(String packageName, int userId);
-	/** @hide */
-	public abstract boolean updateIntentVerificationStatusAsUser(String packageName, int status, int userId);
-//	/** @hide */
-//	public abstract List<IntentFilterVerificationInfo> getIntentFilterVerifications(String packageName);
 	/** @hide */
 	public abstract List<IntentFilter> getAllIntentFilters(String packageName);
-	/** @hide */ //@TestApi
-	public abstract String getDefaultBrowserPackageNameAsUser(int userId);
-	/** @hide */
-	public abstract boolean setDefaultBrowserPackageNameAsUser(String packageName, int userId);
 	public abstract void setInstallerPackageName(String targetPackage, String installerPackageName);
 	public abstract String getInstallerPackageName(String packageName);
-	/** @hide */
-	public abstract void deletePackage(String packageName, IPackageDeleteObserver observer, int flags);
-	/** @hide */ @RequiresPermission(anyOf = { Manifest.permission.DELETE_PACKAGES/*, Manifest.permission.INTERACT_ACROSS_USERS_FULL */})
-	public abstract void deletePackageAsUser(String packageName, IPackageDeleteObserver observer, int flags, int userId);
-	/** @hide */
-	public abstract void clearApplicationUserData(String packageName, IPackageDataObserver observer);
-	/** @hide */
-	public abstract void deleteApplicationCacheFiles(String packageName, IPackageDataObserver observer);
-	/** @hide */
-	public abstract void deleteApplicationCacheFilesAsUser(String packageName, int userId, IPackageDataObserver observer);
-	/** @hide */
-	public void freeStorageAndNotify(long freeStorageSize, IPackageDataObserver observer) { throw new UnsupportedOperationException(); }
-	/** @hide */
-	public abstract void freeStorageAndNotify(String volumeUuid, long freeStorageSize, IPackageDataObserver observer);
-	/** @hide */
-	public void freeStorage(long freeStorageSize, IntentSender pi) { throw new UnsupportedOperationException(); }
-	/** @hide */
-	public abstract void freeStorage(String volumeUuid, long freeStorageSize, IntentSender pi);
 	/** @hide */
 	public abstract void getPackageSizeInfoAsUser(String packageName, int userId, IPackageStatsObserver observer);
 	/** @hide */
@@ -269,16 +203,6 @@ public abstract class PackageManager {
 	public abstract List<PackageInfo> getPreferredPackages(int flags);
 	@Deprecated
 	public abstract void addPreferredActivity(IntentFilter filter, int match, ComponentName[] set, ComponentName activity);
-	/** @hide */
-	public void addPreferredActivityAsUser(IntentFilter filter, int match, ComponentName[] set, ComponentName activity, int userId) {
-		throw new RuntimeException("Not implemented. Must override in a subclass.");
-	}
-	/** @hide */ @Deprecated
-	public abstract void replacePreferredActivity(IntentFilter filter, int match, ComponentName[] set, ComponentName activity);
-	/** @hide */ @Deprecated
-	public void replacePreferredActivityAsUser(IntentFilter filter, int match, ComponentName[] set, ComponentName activity, int userId) {
-		throw new RuntimeException("Not implemented. Must override in a subclass.");
-	}
 	public abstract void clearPackagePreferredActivities(String packageName);
 	public abstract int getPreferredActivities(List<IntentFilter> outFilters, List<ComponentName> outActivities, String packageName);
 	/** @hide */
@@ -289,17 +213,9 @@ public abstract class PackageManager {
 	public abstract int getApplicationEnabledSetting(String packageName);
 	/** @hide */
 	public abstract void flushPackageRestrictionsAsUser(int userId);
-	/** @hide */
-	public abstract boolean setApplicationHiddenSettingAsUser(String packageName, boolean hidden, UserHandle userHandle);
-	/** @hide */
-	public abstract boolean getApplicationHiddenSettingAsUser(String packageName, UserHandle userHandle);
 	public abstract boolean isSafeMode();
 	public abstract void setApplicationCategoryHint(final String packageName, final int categoryHint);
 	public abstract boolean canRequestPackageInstalls();
-	/** @hide */ //@SystemApi @RequiresPermission(Manifest.permission.OBSERVE_GRANT_REVOKE_PERMISSIONS)
-	public abstract void addOnPermissionsChangeListener(OnPermissionsChangedListener listener);
-	/** @hide */ //@SystemApi
-	public abstract void removeOnPermissionsChangeListener(OnPermissionsChangedListener listener);
 	/** @hide */
 	public abstract KeySet getKeySetByAlias(String packageName, String alias);
 	/** @hide */
@@ -308,27 +224,11 @@ public abstract class PackageManager {
 	public abstract boolean isSignedBy(String packageName, KeySet ks);
 	/** @hide */
 	public abstract boolean isSignedByExactly(String packageName, KeySet ks);
-	/** @hide */
-	public abstract String[] setPackagesSuspendedAsUser(String[] packageNames, boolean suspended, int userId);
 	@RequiresApi(P) public boolean isPackageSuspended() { throw new UnsupportedOperationException("isPackageSuspended not implemented"); }
 	@RequiresApi(P) public Bundle getSuspendedPackageAppExtras() { throw new UnsupportedOperationException("getSuspendedPackageAppExtras not implemented"); }
 	/** @hide */
 	public abstract boolean isPackageSuspendedForUser(String packageName, int userId);
-	/** @hide */
-	public static boolean isMoveStatusFinished(int status) { throw new UnsupportedOperationException(); }
-	/** @hide */
-	public static abstract class MoveCallback {
-		public void onCreated(int moveId, Bundle extras) {}
-		public abstract void onStatusChanged(int moveId, int status, long estMillis);
-	}
-	/** @hide */
-	public abstract int getMoveStatus(int moveId);
-	/** @hide */
-	public abstract void registerMoveCallback(MoveCallback callback, Handler handler);
-	/** @hide */
-	public abstract void unregisterMoveCallback(MoveCallback callback);
-//	/** @hide */
-//	public abstract int movePackage(String packageName, VolumeInfo vol);
+
 //	/** @hide */
 //	public abstract @Nullable VolumeInfo getPackageCurrentVolume(ApplicationInfo app);
 //	/** @hide */
@@ -345,29 +245,11 @@ public abstract class PackageManager {
 	public abstract boolean isUpgrade();
 	public abstract PackageInstaller getPackageInstaller();
 	/** @hide */
-	public abstract void addCrossProfileIntentFilter(IntentFilter filter, int sourceUserId, int targetUserId, int flags);
-	/** @hide */
-	public abstract void clearCrossProfileIntentFilters(int sourceUserId);
-	/** @hide */
 	public abstract Drawable loadItemIcon(PackageItemInfo itemInfo, ApplicationInfo appInfo);
 	/** @hide */
 	public abstract Drawable loadUnbadgedItemIcon(PackageItemInfo itemInfo, ApplicationInfo appInfo);
 	/** @hide */
 	public abstract boolean isPackageAvailable(String packageName);
-	/** @hide */
-	public static String installStatusToString(int status, String msg) { throw new UnsupportedOperationException(); }
-	/** @hide */
-	public static String installStatusToString(int status) { throw new UnsupportedOperationException(); }
-	/** @hide */
-	public static int installStatusToPublicStatus(int status) { throw new UnsupportedOperationException(); }
-	/** @hide */
-	public static String deleteStatusToString(int status, String msg) { throw new UnsupportedOperationException(); }
-	/** @hide */
-	public static String deleteStatusToString(int status) { throw new UnsupportedOperationException(); }
-	/** @hide */
-	public static int deleteStatusToPublicStatus(int status) { throw new UnsupportedOperationException(); }
-	/** @hide */
-	public static String permissionFlagToString(int flag) { throw new UnsupportedOperationException(); }
 	@RequiresApi(P) public boolean hasSigningCertificate(String packageName, byte[] certificate, int type) { throw new UnsupportedOperationException(); }
 	@RequiresApi(P) public boolean hasSigningCertificate(int uid, byte[] certificate, int type) { throw new UnsupportedOperationException(); }
 	/** @hide */ @RequiresApi(P) public String getSystemTextClassifierPackageName() { throw new UnsupportedOperationException(); }
