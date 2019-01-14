@@ -325,7 +325,8 @@ public class CondomProcess {
 				final Intent intent = (Intent) args[0];
 				final int original_intent_flags = intent.getFlags();
 				return mCondom.proceed(OutboundType.QUERY_SERVICES, intent, null, new CondomCore.WrappedValueProcedureThrows<ResolveInfo, Throwable>() { @Override public ResolveInfo proceed() throws Throwable {
-					if (! mCondom.mExcludeBackgroundServices) return (ResolveInfo) CondomProcessPackageManager.super.invoke(proxy, method, args);
+					if (! mCondom.mExcludeBackgroundServices && mCondom.mOutboundJudge == null)
+						return (ResolveInfo) CondomProcessPackageManager.super.invoke(proxy, method, args);
 
 					if (IPackageManager_queryIntentServices == null) {
 						mCondom.mBase.getPackageManager().queryIntentServices(DUMMY_INTENT, 0);
