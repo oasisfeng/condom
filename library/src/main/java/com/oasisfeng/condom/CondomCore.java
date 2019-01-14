@@ -44,6 +44,7 @@ import android.support.annotation.VisibleForTesting;
 import android.util.EventLog;
 import android.util.Log;
 
+import com.oasisfeng.condom.ext.PackageManagerFactory;
 import com.oasisfeng.condom.util.Lazy;
 
 import java.util.ArrayList;
@@ -259,8 +260,12 @@ class CondomCore {
 		mOutboundJudge = options.mOutboundJudge;
 		mDryRun = options.mDryRun;
 
-		mPackageManager = new Lazy<PackageManager>() { @Override protected PackageManager create() {
+		final Lazy<PackageManager> lazy_pm = new Lazy<PackageManager>() { @Override protected PackageManager create() {
 			return new CondomPackageManager(CondomCore.this, base.getPackageManager(), tag);
+		}};
+		final PackageManagerFactory pm_factory = options.mPackageManagerFactory;
+		mPackageManager = new Lazy<PackageManager>() { @Override protected PackageManager create() {
+			return pm_factory != null ? pm_factory.getPackageManager(base, lazy_pm.get()) : lazy_pm.get();
 		}};
 		mContentResolver = new Lazy<ContentResolver>() { @Override protected ContentResolver create() {
 			return new CondomContentResolver(CondomCore.this, base, base.getContentResolver());

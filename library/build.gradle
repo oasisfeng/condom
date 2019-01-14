@@ -13,6 +13,11 @@ android {
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
 
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
     lintOptions {
         // Disable 'NewApi' checking due to false errors in old version of lint tool, until sdk-tool-25.4 is deployed on Travis-CI.
         disable 'NewApi'

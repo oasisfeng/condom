@@ -22,6 +22,8 @@ import android.content.pm.PackageManager;
 import android.support.annotation.Keep;
 import android.support.annotation.Nullable;
 
+import com.oasisfeng.condom.ext.PackageManagerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -51,6 +53,8 @@ public class CondomOptions {
 	/** Set a custom judge for the explicit target package of outbound service and broadcast requests. */
 	public CondomOptions setOutboundJudge(final OutboundJudge judge) { mOutboundJudge = judge; return this; }
 
+	public CondomOptions setPackageManagerFactory(final PackageManagerFactory factory) { mPackageManagerFactory = factory; return this; }
+
 	/** Set to dry-run mode to inspect the outbound wake-up only, no outbound requests will be actually blocked. */
 	public CondomOptions setDryRun(final boolean dry_run) { mDryRun = dry_run; return this; }
 
@@ -62,6 +66,7 @@ public class CondomOptions {
 
 	boolean mDryRun;
 	@Nullable OutboundJudge mOutboundJudge;
+	@Nullable PackageManagerFactory mPackageManagerFactory;
 	boolean mExcludeBackgroundReceivers = true;
 	boolean mExcludeBackgroundServices = true;
 	@Nullable List<CondomKit> mKits;

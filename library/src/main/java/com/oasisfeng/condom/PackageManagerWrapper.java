@@ -73,9 +73,9 @@ import static android.os.Build.VERSION_CODES.P;
  * Created by Oasis on 2017/3/27.
  */
 @Keep @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
-class PackageManagerWrapper extends PackageManager {
+public class PackageManagerWrapper extends PackageManager {
 
-	PackageManagerWrapper(PackageManager base) { mBase = base; }
+	public PackageManagerWrapper(PackageManager base) { mBase = base; }
 
 	@Override public PackageInfo getPackageInfo(String packageName, int flags) throws NameNotFoundException {
 		return mBase.getPackageInfo(packageName, flags);
@@ -666,8 +666,9 @@ class PackageManagerWrapper extends PackageManager {
 
 	/** @hide */
 	@RequiresApi(P) public String getSystemTextClassifierPackageName() { return mBase.getSystemTextClassifierPackageName(); }
+
 	/** @hide */
 	@RequiresApi(P) public boolean isPackageStateProtected(String packageName, int userId) { return mBase.isPackageStateProtected(packageName, userId); }
 
-	private PackageManager mBase;
+	final private PackageManager mBase;
 }
