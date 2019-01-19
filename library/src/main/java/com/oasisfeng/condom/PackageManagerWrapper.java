@@ -50,7 +50,6 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.support.annotation.RequiresPermission;
-import android.support.annotation.RestrictTo;
 
 import java.util.List;
 
@@ -72,7 +71,7 @@ import static android.os.Build.VERSION_CODES.P;
  *
  * Created by Oasis on 2017/3/27.
  */
-@Keep @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+@Keep
 public class PackageManagerWrapper extends PackageManager {
 
 	public PackageManagerWrapper(PackageManager base) { mBase = base; }
