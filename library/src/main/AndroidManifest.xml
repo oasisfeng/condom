@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.oasisfeng.condom">
     <application>
-        <meta-data android:name="com.oasisfeng.condom.version" android:value="2.2.0.20180109"/>
+        <meta-data android:name="com.oasisfeng.condom.version" android:value="2.3.0.20190119"/>
     </application>
 </manifest>
