@@ -53,7 +53,7 @@ import static android.content.pm.PackageManager.GET_RECEIVERS;
 import static android.content.pm.PackageManager.GET_SERVICES;
 import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR1;
-import static android.os.Build.VERSION_CODES.N_MR1;
+import static android.os.Build.VERSION_CODES.O;
 import static android.os.Build.VERSION_CODES.Q;
 
 /**
@@ -184,15 +184,15 @@ public class CondomProcess {
 			throws ClassNotFoundException, NoSuchFieldException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
 		final Class<?> ActivityManagerNative = Class.forName("android.app.ActivityManagerNative");
 		Field ActivityManagerNative_gDefault = null;
-		if (SDK_INT <= N_MR1) try {
+		if (SDK_INT < O) try {
 			ActivityManagerNative_gDefault = ActivityManagerNative.getDeclaredField("gDefault");
 		} catch (final NoSuchFieldException ignored) {}		// ActivityManagerNative.gDefault is no longer available on Android O.
-		if (ActivityManagerNative_gDefault == null) {
+		if (ActivityManagerNative_gDefault == null) { //noinspection JavaReflectionMemberAccess
 			ActivityManagerNative_gDefault = ActivityManager.class.getDeclaredField("IActivityManagerSingleton");
 		}
 		ActivityManagerNative_gDefault.setAccessible(true);
 		final Class<?> Singleton = Class.forName("android.util.Singleton");
-		final Method Singleton_get = Singleton.getDeclaredMethod("get");
+		@SuppressLint("DiscouragedPrivateApi") final Method Singleton_get = Singleton.getDeclaredMethod("get");
 		Singleton_get.setAccessible(true);
 		final Field Singleton_mInstance = Singleton.getDeclaredField("mInstance");
 		Singleton_mInstance.setAccessible(true);
@@ -245,9 +245,8 @@ public class CondomProcess {
 			final String method_name = method.getName(); final Intent intent; final int result;
 			switch (method_name) {
 			case "broadcastIntent":	// int broadcastIntent(IApplicationThread caller, Intent intent, String resolvedType, IIntentReceiver resultTo, int resultCode, String resultData, Bundle map, String/[23+] String[] requiredPermissions, [18+ int appOp], [23+ Bundle options], boolean serialized, boolean sticky, [16+ int userId]);
-				result = mCondom.proceed(OutboundType.BROADCAST, (Intent) args[1], Integer.MIN_VALUE, new CondomCore.WrappedValueProcedureThrows<Integer, Throwable>() { @Override public Integer proceed() throws Throwable {
-					return (Integer) CondomProcessActivityManager.super.invoke(proxy, method, args);
-				}});
+				result = mCondom.proceed(OutboundType.BROADCAST, (Intent) args[1], Integer.MIN_VALUE,
+						() -> (Integer) CondomProcessActivityManager.super.invoke(proxy, method, args));
 				final Object result_receiver = args[3];
 				if (result != Integer.MIN_VALUE) return result;
 				if (result_receiver == null) return 0/* ActivityManager.BROADCAST_SUCCESS */;
@@ -263,16 +262,14 @@ public class CondomProcess {
 			case "bindService":				// Android P-
 			case "bindIsolatedService":		// Android Q+
 				intent = (Intent) args[2];
-				result = mCondom.proceed(OutboundType.BIND_SERVICE, intent, 0, new CondomCore.WrappedValueProcedureThrows<Integer, Throwable>() { @Override public Integer proceed() throws Throwable {
-					return (Integer) CondomProcessActivityManager.super.invoke(proxy, method, args);
-				}});	// Result: 0 - no match, >0 - succeed, <0 - SecurityException.
+				result = mCondom.proceed(OutboundType.BIND_SERVICE, intent, 0,
+						() -> (Integer) CondomProcessActivityManager.super.invoke(proxy, method, args));	// Result: 0 - no match, >0 - succeed, <0 - SecurityException.
 				if (result > 0) mCondom.logIfOutboundPass(FULL_TAG, intent, CondomCore.getTargetPackage(intent), CondomCore.CondomEvent.BIND_PASS);
 				return result;
 			case "startService":
 				intent = (Intent) args[1];
-				final ComponentName component = mCondom.proceed(OutboundType.START_SERVICE, intent, null, new CondomCore.WrappedValueProcedureThrows<ComponentName, Throwable>() { @Override public ComponentName proceed() throws Throwable {
-					return (ComponentName) CondomProcessActivityManager.super.invoke(proxy, method, args);
-				}});
+				final ComponentName component = mCondom.proceed(OutboundType.START_SERVICE, intent, null,
+						() -> (ComponentName) CondomProcessActivityManager.super.invoke(proxy, method, args));
 				if (component != null) mCondom.logIfOutboundPass(FULL_TAG, intent, component.getPackageName(), CondomCore.CondomEvent.START_PASS);
 				return component;
 			case "getContentProvider":		// (ApplicationThread, [Q+ String opPackageName], String authority, int userId, boolean stable)
@@ -313,12 +310,8 @@ public class CondomProcess {
 
 				final Object result = super.invoke(proxy, method, args);
 
-				//noinspection ResultOfMethodCallIgnored, since the result here may be the inner list if the original result is ParceledListSlice.
-				final List<ResolveInfo> list = mCondom.proceedQuery(outbound_type, (Intent) args[0], new CondomCore.WrappedValueProcedureThrows<List<ResolveInfo>, Exception>() {
-					@Override public List<ResolveInfo> proceed() throws Exception {
-						return asList(result);
-					}
-				}, outbound_type == OutboundType.QUERY_SERVICES ? CondomCore.SERVICE_PACKAGE_GETTER : CondomCore.RECEIVER_PACKAGE_GETTER);	// Both "queryIntentServices" and "queryIntentReceivers" reach here.
+				final List<ResolveInfo> list = mCondom.proceedQuery(outbound_type, (Intent) args[0], () -> asList(result),
+						outbound_type == OutboundType.QUERY_SERVICES ? CondomCore.SERVICE_PACKAGE_GETTER : CondomCore.RECEIVER_PACKAGE_GETTER);	// Both "queryIntentServices" and "queryIntentReceivers" reach here.
 				if (list.isEmpty()) asList(result).clear();	// In case Collections.emptyList() is returned due to targeted query being rejected by outbound judge.
 				return result;
 
@@ -326,7 +319,7 @@ public class CondomProcess {
 				// Intent flags could only filter background receivers, we have to deal with services by ourselves.
 				final Intent intent = (Intent) args[0];
 				final int original_intent_flags = intent.getFlags();
-				return mCondom.proceed(OutboundType.QUERY_SERVICES, intent, null, new CondomCore.WrappedValueProcedureThrows<ResolveInfo, Throwable>() { @Override public ResolveInfo proceed() throws Throwable {
+				return mCondom.proceed(OutboundType.QUERY_SERVICES, intent, null, () -> {
 					if (! mCondom.mExcludeBackgroundServices && mCondom.mOutboundJudge == null)
 						return (ResolveInfo) CondomProcessPackageManager.super.invoke(proxy, method, args);
 
@@ -337,7 +330,7 @@ public class CondomProcess {
 					}
 					final List<ResolveInfo> candidates = asList(CondomProcessPackageManager.super.invoke(proxy, IPackageManager_queryIntentServices, args));
 					return mCondom.filterCandidates(OutboundType.QUERY_SERVICES, intent.setFlags(original_intent_flags), candidates, FULL_TAG, false);
-				}});
+				});
 
 			case "resolveContentProvider":
 				final ProviderInfo provider = (ProviderInfo) super.invoke(proxy, method, args);
@@ -397,6 +390,6 @@ public class CondomProcess {
 		final boolean DEBUG;
 	}
 
-	static String FULL_TAG = "CondomProcess";		// Both will be replaced by compound tag in install().
-	static String TAG = "CondomProcess";
+	private static String FULL_TAG = "CondomProcess";	// Both will be replaced by compound tag in install().
+	private static String TAG = "CondomProcess";
 }

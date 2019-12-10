@@ -328,7 +328,7 @@ public class CondomContextBlockingTest {
 		tests.add(new Consumer<Intent>() { @Override public void accept(final Intent intent) { condom.getPackageManager().queryBroadcastReceivers(intent, 0); }});
 
 		//noinspection unchecked
-		return tests.toArray(new Consumer[tests.size()]);
+		return tests.toArray(new Consumer[0]);
 	}
 
 	@SuppressWarnings("unchecked") private static Consumer<Intent>[] allServiceApis(final Context condom) {
@@ -361,13 +361,13 @@ public class CondomContextBlockingTest {
 		@Override public void sendBroadcast(final Intent intent, final String p) { check(intent); }
 		@Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user) { check(intent); }
 		@Override public void sendBroadcastAsUser(final Intent intent, final UserHandle user, final String receiverPermission) { check(intent); }
-		@Override public void sendStickyBroadcast(final Intent intent) { check(intent); }
-		@Override public void sendStickyBroadcastAsUser(final Intent intent, final UserHandle u) { check(intent); }
+		@SuppressWarnings("deprecation") @Override public void sendStickyBroadcast(final Intent intent) { check(intent); }
+		@SuppressWarnings("deprecation") @Override public void sendStickyBroadcastAsUser(final Intent intent, final UserHandle u) { check(intent); }
 		@Override public void sendOrderedBroadcast(final Intent intent, final String p) { check(intent); }
 		@Override public void sendOrderedBroadcast(final Intent intent, final String p, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent); }
 		@Override public void sendOrderedBroadcastAsUser(final Intent intent, final UserHandle u, final String p, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent); }
-		@Override public void sendStickyOrderedBroadcast(final Intent intent, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent); }
-		@Override public void sendStickyOrderedBroadcastAsUser(final Intent intent, final UserHandle u, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent); }
+		@SuppressWarnings("deprecation") @Override public void sendStickyOrderedBroadcast(final Intent intent, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent); }
+		@SuppressWarnings("deprecation") @Override public void sendStickyOrderedBroadcastAsUser(final Intent intent, final UserHandle u, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent); }
 
 		@Override public PackageManager getPackageManager() {
 			return new PackageManagerWrapper(InstrumentationRegistry.getTargetContext().getPackageManager()) {

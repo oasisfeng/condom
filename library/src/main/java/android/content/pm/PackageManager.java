@@ -230,19 +230,6 @@ public abstract class PackageManager {
 	@RequiresApi(P) public Bundle getSuspendedPackageAppExtras() { throw new UnsupportedOperationException("getSuspendedPackageAppExtras not implemented"); }
 	/** @hide */
 	public abstract boolean isPackageSuspendedForUser(String packageName, int userId);
-
-//	/** @hide */
-//	public abstract @Nullable VolumeInfo getPackageCurrentVolume(ApplicationInfo app);
-//	/** @hide */
-//	public abstract List<VolumeInfo> getPackageCandidateVolumes(ApplicationInfo app);
-//	/** @hide */
-//	public abstract int movePrimaryStorage(VolumeInfo vol);
-//	/** @hide */
-//	public abstract @Nullable VolumeInfo getPrimaryStorageCurrentVolume();
-//	/** @hide */
-//	public abstract List<VolumeInfo> getPrimaryStorageCandidateVolumes();
-//	/** @hide */
-//	public abstract VerifierDeviceIdentity getVerifierDeviceIdentity();
 	/** @hide */
 	public abstract boolean isUpgrade();
 	public abstract PackageInstaller getPackageInstaller();
@@ -265,4 +252,20 @@ public abstract class PackageManager {
 	@RequiresApi(Q) public boolean getSyntheticAppDetailsActivityEnabled(String packageName) { throw new UnsupportedOperationException(); }
 	@RequiresApi(Q) public boolean isPackageSuspended(String packageName) throws NameNotFoundException { throw new UnsupportedOperationException(); }
 	@RequiresApi(Q) public boolean isDeviceUpgrading() { return false; }
+
+	/* The follow hidden APIs are unlikely to be used by app */
+
+//	/** @hide */	VolumeInfo is hidden too
+//	public abstract @Nullable VolumeInfo getPackageCurrentVolume(ApplicationInfo app);
+//	/** @hide */
+//	public abstract List<VolumeInfo> getPackageCandidateVolumes(ApplicationInfo app);
+//	/** @hide */
+//	public abstract @Nullable VolumeInfo getPrimaryStorageCurrentVolume();
+//	/** @hide */
+//	public abstract List<VolumeInfo> getPrimaryStorageCandidateVolumes();
+
+//	/** @hide */	Requires privileged permission
+//	public abstract int movePrimaryStorage(VolumeInfo vol);
+//	/** @hide */	Requires privileged permission
+//	public abstract VerifierDeviceIdentity getVerifierDeviceIdentity();
 }
