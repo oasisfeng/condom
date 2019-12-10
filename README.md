@@ -13,7 +13,7 @@ Project Condom is a thin library to wrap the naked `Context` in your Android pro
 1. Add dependency to this library in build.gradle of your project module.
 
    ```
-   compile 'com.oasisfeng.condom:library:2.2.0'
+   compile 'com.oasisfeng.condom:library:2.5.0'
    ```
 
 2. Migration the initialization code of 3rd-party SDK.
@@ -60,7 +60,7 @@ That's all! Just have the confidence of condom, to protect your users from untru
    对于 Gradle 工程，直接在模块的依赖项清单中添加下面这一行：
 
    ```
-   compile 'com.oasisfeng.condom:library:2.2.0'
+   compile 'com.oasisfeng.condom:library:2.5.0'
    ```
 
    对于非 Gradle 工程，请[下载AAR文件](http://jcenter.bintray.com/com/oasisfeng/condom/library/)放进项目模块本地的 `libs` 路径中，并在工程的 ProGuard 配置文件中增加以下规则：（Gradle 工程和不使用 ProGuard 的工程不需要这一步）
