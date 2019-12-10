@@ -29,10 +29,12 @@ import android.support.annotation.RequiresApi;
 import android.util.AndroidException;
 
 import java.util.List;
+import java.util.Set;
 
 import static android.os.Build.VERSION_CODES.N;
 import static android.os.Build.VERSION_CODES.O_MR1;
 import static android.os.Build.VERSION_CODES.P;
+import static android.os.Build.VERSION_CODES.Q;
 
 /** Stub class for real PackageManager, only contains APIs (including hidden) for regular app (without privileges). */
 public abstract class PackageManager {
@@ -254,4 +256,13 @@ public abstract class PackageManager {
 	@RequiresApi(P) public boolean hasSigningCertificate(int uid, byte[] certificate, int type) { throw new UnsupportedOperationException(); }
 	/** @hide */ @RequiresApi(P) public String getSystemTextClassifierPackageName() { throw new UnsupportedOperationException(); }
 	/** @hide */ @RequiresApi(P) public boolean isPackageStateProtected(String packageName, int userId) { throw new UnsupportedOperationException(); }
+
+	@RequiresApi(Q) public boolean addWhitelistedRestrictedPermission(String packageName, String permission, int whitelistFlags) { throw new UnsupportedOperationException(); }
+	@RequiresApi(Q) public Set<String> getWhitelistedRestrictedPermissions(String packageName, int whitelistFlag) { throw new UnsupportedOperationException(); }
+	@RequiresApi(Q) public boolean removeWhitelistedRestrictedPermission(String packageName, String permission, int whitelistFlags) { throw new UnsupportedOperationException(); }
+	@RequiresApi(Q) public List<ModuleInfo> getInstalledModules(int flags) { throw new UnsupportedOperationException(); }
+	@RequiresApi(Q) public ModuleInfo getModuleInfo(String packageName, int flags) throws NameNotFoundException { throw new UnsupportedOperationException(); }
+	@RequiresApi(Q) public boolean getSyntheticAppDetailsActivityEnabled(String packageName) { throw new UnsupportedOperationException(); }
+	@RequiresApi(Q) public boolean isPackageSuspended(String packageName) throws NameNotFoundException { throw new UnsupportedOperationException(); }
+	@RequiresApi(Q) public boolean isDeviceUpgrading() { return false; }
 }

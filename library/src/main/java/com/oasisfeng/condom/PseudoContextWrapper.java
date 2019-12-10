@@ -19,6 +19,7 @@ package com.oasisfeng.condom;
 
 import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
+import android.content.ComponentCallbacks;
 import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -53,8 +54,10 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.concurrent.Executor;
 
 import static android.os.Build.VERSION_CODES.HONEYCOMB;
+import static android.os.Build.VERSION_CODES.ICE_CREAM_SANDWICH;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR1;
 import static android.os.Build.VERSION_CODES.KITKAT;
@@ -62,6 +65,7 @@ import static android.os.Build.VERSION_CODES.LOLLIPOP;
 import static android.os.Build.VERSION_CODES.M;
 import static android.os.Build.VERSION_CODES.N;
 import static android.os.Build.VERSION_CODES.O;
+import static android.os.Build.VERSION_CODES.Q;
 
 /**
  * A package-private copy of {@link ContextWrapper}, to prevent potential leakage caused by {@link ContextWrapper#getBaseContext()}",
@@ -495,6 +499,21 @@ class PseudoContextWrapper extends Context {
 
 	@RequiresApi(N) @Override public boolean isDeviceProtectedStorage() {
 		return mBase.isDeviceProtectedStorage();
+	}
+
+    @RequiresApi(ICE_CREAM_SANDWICH) @Override public void registerComponentCallbacks(final ComponentCallbacks callback) { mBase.registerComponentCallbacks(callback); }
+    @RequiresApi(ICE_CREAM_SANDWICH) @Override public void unregisterComponentCallbacks(final ComponentCallbacks callback) { mBase.unregisterComponentCallbacks(callback); }
+
+    @RequiresApi(Q) @Override public Executor getMainExecutor() { return mBase.getMainExecutor(); }
+	@RequiresApi(Q) @Override public @NonNull String getOpPackageName() { return mBase.getOpPackageName(); }
+	@RequiresApi(Q) @Override public boolean bindService(@NonNull final Intent service, final int flags, @NonNull final Executor executor, @NonNull final ServiceConnection conn) {
+		return mBase.bindService(service, flags, executor, conn);
+	}
+	@RequiresApi(Q) @Override public boolean bindIsolatedService(@NonNull final Intent service, final int flags, @NonNull final String instanceName, @NonNull final Executor executor, @NonNull final ServiceConnection conn) {
+		return mBase.bindIsolatedService(service, flags, instanceName, executor, conn);
+	}
+	@RequiresApi(Q) @Override public void updateServiceGroup(@NonNull final ServiceConnection conn, final int group, final int importance) {
+		mBase.updateServiceGroup(conn, group, importance);
 	}
 
 	public PseudoContextWrapper(Context base) {

@@ -28,6 +28,7 @@ import android.content.pm.FeatureInfo;
 import android.content.pm.IPackageStatsObserver;
 import android.content.pm.InstrumentationInfo;
 import android.content.pm.KeySet;
+import android.content.pm.ModuleInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageInstaller;
 import android.content.pm.PackageItemInfo;
@@ -52,6 +53,7 @@ import android.support.annotation.RequiresApi;
 import android.support.annotation.RequiresPermission;
 
 import java.util.List;
+import java.util.Set;
 
 import static android.os.Build.VERSION_CODES.HONEYCOMB;
 import static android.os.Build.VERSION_CODES.ICE_CREAM_SANDWICH;
@@ -65,6 +67,7 @@ import static android.os.Build.VERSION_CODES.N;
 import static android.os.Build.VERSION_CODES.O;
 import static android.os.Build.VERSION_CODES.O_MR1;
 import static android.os.Build.VERSION_CODES.P;
+import static android.os.Build.VERSION_CODES.Q;
 
 /**
  * Delegation wrapper of {@link PackageManager}
@@ -525,7 +528,6 @@ public class PackageManagerWrapper extends PackageManager {
 		mBase.setInstallerPackageName(targetPackage, installerPackageName);
 	}
 
-	@RequiresPermission(Manifest.permission.DELETE_PACKAGES)
 	@Override public String getInstallerPackageName(String packageName) {
 		return mBase.getInstallerPackageName(packageName);
 	}
@@ -668,6 +670,27 @@ public class PackageManagerWrapper extends PackageManager {
 
 	/** @hide */
 	@RequiresApi(P) public boolean isPackageStateProtected(String packageName, int userId) { return mBase.isPackageStateProtected(packageName, userId); }
+
+	@RequiresApi(Q) public boolean addWhitelistedRestrictedPermission(String packageName, String permission, int whitelistFlags) {
+		return mBase.addWhitelistedRestrictedPermission(packageName, permission, whitelistFlags);
+	}
+	@RequiresApi(Q) public Set<String> getWhitelistedRestrictedPermissions(String packageName, int whitelistFlag) {
+		return mBase.getWhitelistedRestrictedPermissions(packageName, whitelistFlag);
+	}
+	@RequiresApi(Q) public boolean removeWhitelistedRestrictedPermission(String packageName, String permission, int whitelistFlags) {
+		return mBase.removeWhitelistedRestrictedPermission(packageName, permission, whitelistFlags);
+	}
+	@RequiresApi(Q) public List<ModuleInfo> getInstalledModules(int flags) { return mBase.getInstalledModules(flags); }
+	@RequiresApi(Q) public ModuleInfo getModuleInfo(String packageName, int flags) throws NameNotFoundException {
+		return mBase.getModuleInfo(packageName, flags);
+	}
+	@RequiresApi(Q) public boolean getSyntheticAppDetailsActivityEnabled(String packageName) {
+		return mBase.getSyntheticAppDetailsActivityEnabled(packageName);
+	}
+	@RequiresApi(Q) public boolean isPackageSuspended(String packageName) throws NameNotFoundException {
+		return mBase.isPackageSuspended(packageName);
+	}
+	@RequiresApi(Q) public boolean isDeviceUpgrading() { return mBase.isDeviceUpgrading(); }
 
 	final private PackageManager mBase;
 }
