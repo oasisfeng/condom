@@ -21,8 +21,8 @@ import android.database.ContentObserver;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.RemoteException;
-import android.support.annotation.RequiresApi;
-import android.support.annotation.RestrictTo;
+import androidx.annotation.RequiresApi;
+import androidx.annotation.RestrictTo;
 
 import java.util.ArrayList;
 import java.util.List;

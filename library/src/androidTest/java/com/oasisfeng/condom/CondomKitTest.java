@@ -27,7 +27,8 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
-import android.support.test.InstrumentationRegistry;
+
+import androidx.test.core.app.ApplicationProvider;
 import android.telephony.TelephonyManager;
 
 import com.oasisfeng.condom.kit.NullDeviceIdKit;
@@ -64,13 +65,11 @@ public class CondomKitTest {
 
 	@Test public void testBasicKit() throws ReflectiveOperationException, NameNotFoundException {
 		final ActivityManager am = createActivityManager(context);
-		final CondomOptions option = new CondomOptions().addKit(new CondomKit() { @Override public void onRegister(final CondomKitRegistry registry) {
-			registry.registerSystemService(Context.ACTIVITY_SERVICE, new SystemServiceSupplier() { @Override public Object getSystemService(final Context context, final String name) {
-				return am;
-			}});
+		final CondomOptions option = new CondomOptions().addKit(registry -> {
+			registry.registerSystemService(Context.ACTIVITY_SERVICE, (context, name) -> am);
 			registry.addPermissionSpoof(WRITE_SETTINGS);
 			registry.addPermissionSpoof(ACCESS_COARSE_LOCATION);
-		}});
+		});
 		final CondomContext condom = CondomContext.wrap(new ContextWrapper(context), "KitTest", option);
 
 		assertEquals(am, condom.getSystemService(Context.ACTIVITY_SERVICE));
@@ -132,5 +131,5 @@ public class CondomKitTest {
 		return am_constructor.newInstance(context, new Handler(Looper.getMainLooper()));
 	}
 
-	private final Context context = InstrumentationRegistry.getTargetContext();
+	private final Context context = ApplicationProvider.getApplicationContext();
 }

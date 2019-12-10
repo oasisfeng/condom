@@ -35,14 +35,14 @@ import android.content.pm.ResolveInfo;
 import android.os.Handler;
 import android.os.Process;
 import android.provider.Settings;
-import android.support.annotation.CheckResult;
-import android.support.annotation.Keep;
-import android.support.annotation.Nullable;
-import android.support.annotation.RequiresApi;
-import android.support.annotation.RestrictTo;
-import android.support.annotation.VisibleForTesting;
 import android.util.EventLog;
 import android.util.Log;
+import androidx.annotation.CheckResult;
+import androidx.annotation.Keep;
+import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.VisibleForTesting;
 
 import com.oasisfeng.condom.ext.PackageManagerFactory;
 import com.oasisfeng.condom.util.Lazy;
@@ -118,7 +118,7 @@ class CondomCore {
 
 	@CheckResult <T, E extends Throwable> List<T> proceedQuery(final OutboundType type, final @Nullable Intent intent,
 															   final WrappedValueProcedureThrows<List<T>, E> procedure, final Function<T, String> pkg_getter) throws E {
-		return proceed(type, intent, Collections.<T>emptyList(), new WrappedValueProcedureThrows<List<T>, E>() { @Override public List<T> proceed() throws E {
+		return proceed(type, intent, Collections.emptyList(), () -> {
 			final List<T> candidates = procedure.proceed();
 
 			if (candidates != null && mOutboundJudge != null && (intent == null || getTargetPackage(intent) == null)) {	// Package-targeted intent is already filtered by OutboundJudge in proceed().
@@ -131,7 +131,7 @@ class CondomCore {
 				}
 			}
 			return candidates;
-		}});
+		});
 	}
 	interface Function<T, R> { R apply(T t); }
 
@@ -201,10 +201,7 @@ class CondomCore {
 	Object getSystemService(final String name) {
 		if (mKitManager != null) {
 			final CondomKit.SystemServiceSupplier supplier = mKitManager.mSystemServiceSuppliers.get(name);
-			if (supplier != null) {
-				final Object service = supplier.getSystemService(mBase, name);
-				if (service != null) return service;
-			}
+			if (supplier != null) return supplier.getSystemService(mBase, name);
 		}
 		return null;
 	}
@@ -214,7 +211,7 @@ class CondomCore {
 	}
 
 	Set<String> getSpoofPermissions() {
-		return mKitManager != null ? mKitManager.mSpoofPermissions : Collections.<String>emptySet();
+		return mKitManager != null ? mKitManager.mSpoofPermissions : Collections.emptySet();
 	}
 
 	enum CondomEvent { CONCERN, BIND_PASS, START_PASS, FILTER_BG_SERVICE }
@@ -293,16 +290,8 @@ class CondomCore {
 	private final Lazy<ContentResolver> mContentResolver;
 	private final @Nullable CondomKitManager mKitManager;
 
-	static final Function<ResolveInfo,String> SERVICE_PACKAGE_GETTER = new Function<ResolveInfo, String>() {
-		@Override public String apply(final ResolveInfo resolve) {
-			return resolve.serviceInfo.packageName;
-		}
-	};
-	static final Function<ResolveInfo,String> RECEIVER_PACKAGE_GETTER = new Function<ResolveInfo, String>() {
-		@Override public String apply(final ResolveInfo resolve) {
-			return resolve.activityInfo.packageName;
-		}
-	};
+	static final Function<ResolveInfo,String> SERVICE_PACKAGE_GETTER = resolve -> resolve.serviceInfo.packageName;
+	static final Function<ResolveInfo,String> RECEIVER_PACKAGE_GETTER = resolve -> resolve.activityInfo.packageName;
 
 	private static final int EVENT_TAG = "Condom".hashCode();
 

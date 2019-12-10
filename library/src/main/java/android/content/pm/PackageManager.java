@@ -25,8 +25,8 @@ import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.UserHandle;
-import android.support.annotation.RequiresApi;
 import android.util.AndroidException;
+import androidx.annotation.RequiresApi;
 
 import java.util.List;
 import java.util.Set;

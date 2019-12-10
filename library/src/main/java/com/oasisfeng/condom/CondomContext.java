@@ -31,12 +31,12 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Process;
 import android.os.UserHandle;
-import android.support.annotation.CheckResult;
-import android.support.annotation.Keep;
-import android.support.annotation.Nullable;
-import android.support.annotation.RequiresApi;
-import android.support.annotation.Size;
 import android.util.Log;
+import androidx.annotation.CheckResult;
+import androidx.annotation.Keep;
+import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
+import androidx.annotation.Size;
 
 import com.oasisfeng.condom.util.Lazy;
 
@@ -123,9 +123,8 @@ public class CondomContext extends ContextWrapper {
 	}
 
 	@Override public ComponentName startService(final Intent intent) {
-		final ComponentName component = mCondom.proceed(OutboundType.START_SERVICE, intent, null, new CondomCore.WrappedValueProcedure<ComponentName>() { @Override public ComponentName proceed() {
-			return CondomContext.super.startService(intent);
-		}});
+		final ComponentName component = mCondom.proceed(OutboundType.START_SERVICE, intent, null, () ->
+				CondomContext.super.startService(intent));
 		if (component != null) mCondom.logIfOutboundPass(TAG, intent, component.getPackageName(), CondomCore.CondomEvent.START_PASS);
 		return component;
 	}
@@ -228,7 +227,6 @@ public class CondomContext extends ContextWrapper {
 
 	private CondomContext(final CondomCore condom, final @Nullable Context app_context, final @Nullable @Size(max=16) String tag) {
 		super(condom.mBase);
-		final Context base = condom.mBase;
 		mCondom = condom;
 		mApplicationContext = app_context != null ? app_context : this;
 		mBaseContext = new Lazy<Context>() { @Override protected Context create() {

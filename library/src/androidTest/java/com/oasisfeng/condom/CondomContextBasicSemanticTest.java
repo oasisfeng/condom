@@ -20,7 +20,8 @@ package com.oasisfeng.condom;
 import android.app.Application;
 import android.content.Context;
 import android.content.ContextWrapper;
-import android.support.test.InstrumentationRegistry;
+
+import androidx.test.core.app.ApplicationProvider;
 
 import org.junit.Test;
 
@@ -34,8 +35,8 @@ import static junit.framework.Assert.assertTrue;
 @ParametersAreNonnullByDefault
 public class CondomContextBasicSemanticTest {
 
-	@Test public void testApplicationAsApplicationContextOfBaseContext() throws Exception {
-		final Context context = InstrumentationRegistry.getTargetContext();
+	@Test public void testApplicationAsApplicationContextOfBaseContext() {
+		final Context context = ApplicationProvider.getApplicationContext();
 		final Context app_context = context.getApplicationContext();
 		assertTrue(app_context instanceof Application);
 		final CondomContext condom_context = CondomContext.wrap(context, TAG);
@@ -45,8 +46,8 @@ public class CondomContextBasicSemanticTest {
 		assertTrue(((Application) condom_app_context).getBaseContext() instanceof CondomContext);
 	}
 
-	@Test public void testNonApplicationAsApplicationContextOfBaseContext() throws Exception {
-		final Context context = InstrumentationRegistry.getTargetContext();
+	@Test public void testNonApplicationAsApplicationContextOfBaseContext() {
+		final Context context = ApplicationProvider.getApplicationContext();
 		final ContextWrapper context_wo_app = new ContextWrapper(context) {
 			@Override public Context getApplicationContext() {
 				return new ContextWrapper(context);
@@ -58,8 +59,8 @@ public class CondomContextBasicSemanticTest {
 		assertTrue(condom_app_context instanceof CondomContext);
 	}
 
-	@Test public void testApplicationContextAsBaseContext() throws Exception {
-		final Context context = InstrumentationRegistry.getTargetContext();
+	@Test public void testApplicationContextAsBaseContext() {
+		final Context context = ApplicationProvider.getApplicationContext();
 		final Context app_context = context.getApplicationContext();
 		assertTrue(app_context instanceof Application);
 		final CondomContext condom_context = CondomContext.wrap(app_context, TAG);
@@ -69,8 +70,8 @@ public class CondomContextBasicSemanticTest {
 		assertTrue(((Application) condom_app_context).getBaseContext() instanceof CondomContext);
 	}
 
-	@Test public void testNonApplicationRootContextAsBaseContext() throws Exception {
-		final Context context = InstrumentationRegistry.getTargetContext();
+	@Test public void testNonApplicationRootContextAsBaseContext() {
+		final Context context = ApplicationProvider.getApplicationContext();
 		final ContextWrapper context_wo_app = new ContextWrapper(context) {
 			@Override public Context getApplicationContext() { return this; }
 		};

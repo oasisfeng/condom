@@ -19,8 +19,8 @@ package com.oasisfeng.condom;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.support.annotation.Keep;
-import android.support.annotation.Nullable;
+import androidx.annotation.Keep;
+import androidx.annotation.Nullable;
 
 import com.oasisfeng.condom.ext.PackageManagerFactory;
 

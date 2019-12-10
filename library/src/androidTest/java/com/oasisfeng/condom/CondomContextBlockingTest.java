@@ -42,10 +42,10 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.UserHandle;
 import android.provider.Settings;
-import android.support.annotation.CallSuper;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.test.InstrumentationRegistry;
+import androidx.annotation.CallSuper;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.test.core.app.ApplicationProvider;
 
 import org.junit.Assume;
 import org.junit.Test;
@@ -150,10 +150,10 @@ public class CondomContextBlockingTest {
 
 	@Test public void testContentProviderOutboundJudge() {
 		final TestContext context = new TestContext();
-		final CondomOptions options = new CondomOptions().setOutboundJudge(new OutboundJudge() { @Override public boolean shouldAllow(final OutboundType type, final @Nullable Intent intent, final String target_pkg) {
-			final String settings_pkg = InstrumentationRegistry.getTargetContext().getPackageManager().resolveContentProvider(Settings.System.CONTENT_URI.getAuthority(), 0).packageName;
+		final CondomOptions options = new CondomOptions().setOutboundJudge((type, intent, target_pkg) -> {
+			final String settings_pkg = ApplicationProvider.getApplicationContext().getPackageManager().resolveContentProvider(Settings.System.CONTENT_URI.getAuthority(), 0).packageName;
 			return ! settings_pkg.equals(target_pkg);
-		}});
+		});
 		final CondomContext condom = CondomContext.wrap(context, TAG, options), dry_condom = CondomContext.wrap(context, TAG, options.setDryRun(true));
 
 		for (final Context context2test : new Context[] {condom, condom.getApplicationContext()}) {
@@ -370,7 +370,7 @@ public class CondomContextBlockingTest {
 		@SuppressWarnings("deprecation") @Override public void sendStickyOrderedBroadcastAsUser(final Intent intent, final UserHandle u, final BroadcastReceiver r, final Handler s, final int c, final String d, final Bundle e) { check(intent); }
 
 		@Override public PackageManager getPackageManager() {
-			return new PackageManagerWrapper(InstrumentationRegistry.getTargetContext().getPackageManager()) {
+			return new PackageManagerWrapper(ApplicationProvider.getApplicationContext().getPackageManager()) {
 
 				@Override public ResolveInfo resolveService(final Intent intent, final int flags) {
 					check(intent);
@@ -436,7 +436,7 @@ public class CondomContextBlockingTest {
 			}};
 		}
 
-		TestContext() { super((InstrumentationRegistry.getTargetContext())); }
+		TestContext() { super(ApplicationProvider.getApplicationContext()); }
 
 		boolean mTestingBackgroundUid;
 		boolean mTestingStoppedProvider;

@@ -32,10 +32,10 @@ import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
 import android.os.Bundle;
 import android.os.Process;
-import android.support.annotation.Keep;
-import android.support.annotation.Nullable;
-import android.support.annotation.VisibleForTesting;
 import android.util.Log;
+import androidx.annotation.Keep;
+import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
@@ -123,9 +123,7 @@ public class CondomProcess {
 	}
 
 	private static void validateProcessNames(final Application app, final String[] process_names) {
-		final Thread thread = new Thread(new Runnable() { @Override public void run() {
-			doValidateProcessNames(app, process_names);
-		}});
+		final Thread thread = new Thread(() -> doValidateProcessNames(app, process_names));
 		thread.setPriority(Thread.MIN_PRIORITY);
 		thread.start();
 	}

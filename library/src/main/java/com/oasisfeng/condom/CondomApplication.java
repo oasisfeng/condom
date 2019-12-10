@@ -31,9 +31,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Process;
 import android.os.UserHandle;
-import android.support.annotation.Nullable;
-import android.support.annotation.RequiresApi;
-import android.support.annotation.Size;
+import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
+import androidx.annotation.Size;
 
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 import static android.os.Build.VERSION.SDK_INT;

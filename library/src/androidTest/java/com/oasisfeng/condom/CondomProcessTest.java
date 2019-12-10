@@ -32,8 +32,8 @@ import android.content.pm.ResolveInfo;
 import android.os.IBinder;
 import android.os.Process;
 import android.provider.Settings;
-import android.support.annotation.Nullable;
-import android.support.test.InstrumentationRegistry;
+
+import androidx.test.core.app.ApplicationProvider;
 
 import com.oasisfeng.condom.kit.NullDeviceIdKit;
 import com.oasisfeng.condom.simulation.TestApplication;
@@ -56,7 +56,7 @@ import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@ParametersAreNonnullByDefault
+@ParametersAreNonnullByDefault @SuppressWarnings("Convert2Lambda")	// Use anonymous class instead of lambda to compatible with TestService.
 public class CondomProcessTest {
 
 	@Test public void testBindService() {
@@ -71,9 +71,7 @@ public class CondomProcessTest {
 
 			installCondomProcess(context, new CondomOptions().setOutboundJudge(sBlockAllJudge));
 
-			withFakeSelfPackageName(new Runnable() { @Override public void run() {
-				assertFalse(context.bindService(intent, connection, Context.BIND_AUTO_CREATE));
-			}});	// Block by outbound judge
+			withFakeSelfPackageName(() -> assertFalse(context.bindService(intent, connection, Context.BIND_AUTO_CREATE)));	// Block by outbound judge
 			context.unbindService(connection);
 		}});
 		// TODO: More cases
@@ -87,9 +85,7 @@ public class CondomProcessTest {
 
 			installCondomProcess(context, new CondomOptions().setOutboundJudge(sBlockAllJudge));
 
-			withFakeSelfPackageName(new Runnable() { @Override public void run() {
-				assertNull(context.startService(intent));
-			}});	// Block by outbound judge
+			withFakeSelfPackageName(() -> assertNull(context.startService(intent)));	// Block by outbound judge
 			assertTrue(context.stopService(intent));
 		}});
 		// TODO: More cases
@@ -107,9 +103,8 @@ public class CondomProcessTest {
 
 			testOrderedBroadcast(context, new Intent(ACTION_TEST), true);
 			testOrderedBroadcast(context, new Intent(ACTION_TEST).setPackage(context.getPackageName()), true);	// Self targeted should always be allowed.
-			withFakeSelfPackageName(new Runnable() { @Override public void run() {
-				testOrderedBroadcast(context, new Intent(ACTION_TEST).setPackage(context.getPackageName()), false);
-			}});
+			withFakeSelfPackageName(() ->
+					testOrderedBroadcast(context, new Intent(ACTION_TEST).setPackage(context.getPackageName()), false));
 		}});
 	}
 
@@ -174,18 +169,16 @@ public class CondomProcessTest {
 			assertNotNull("Regular access to Settings provider", client);
 			client.release();
 
-			withFakeSelfPackageName(new Runnable() { @Override public void run() {
-				assertNotNull("Regular access to content provider", resolver.acquireContentProviderClient("com.oasisfeng.condom.test"));
-			}});
+			withFakeSelfPackageName(() ->
+					assertNotNull("Regular access to content provider", resolver.acquireContentProviderClient("com.oasisfeng.condom.test")));
 		}});
 
 		runInSeparateProcess(new TestService.Procedure() { @Override public void run(final Context context) {
 			installCondomProcess(context, new CondomOptions().setOutboundJudge(sBlockAllJudge));
 
 			final ContentResolver resolver = context.getContentResolver();
-			withFakeSelfPackageName(new Runnable() { @Override public void run() {
-				assertNull("Block access to provider", resolver.acquireContentProviderClient("com.oasisfeng.condom.test"));
-			}});
+			withFakeSelfPackageName(() ->
+					assertNull("Block access to provider", resolver.acquireContentProviderClient("com.oasisfeng.condom.test")));
 		}});
 	}
 
@@ -247,11 +240,9 @@ public class CondomProcessTest {
 		}
 	}
 
-	private static Context context() { return InstrumentationRegistry.getTargetContext(); }
+	private static Context context() { return ApplicationProvider.getApplicationContext(); }
 
-	private static final OutboundJudge sBlockAllJudge = new OutboundJudge() { @Override public boolean shouldAllow(final OutboundType type, final @Nullable Intent intent, final String target_pkg) {
-		return false;
-	}};
+	private static final OutboundJudge sBlockAllJudge = (type, intent, target_pkg) -> false;
 
 	final static class SettableFuture<T> implements Future<T> {
 

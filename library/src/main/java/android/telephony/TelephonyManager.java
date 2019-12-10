@@ -17,7 +17,7 @@
 package android.telephony;
 
 import android.content.Context;
-import android.support.annotation.RequiresApi;
+import androidx.annotation.RequiresApi;
 
 import static android.os.Build.VERSION_CODES.O;
 

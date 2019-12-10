@@ -18,7 +18,7 @@
 package android.content;
 
 import android.os.IInterface;
-import android.support.annotation.RestrictTo;
+import androidx.annotation.RestrictTo;
 
 /**
  * Stub class for real IContentProvider, only for compilation purpose.

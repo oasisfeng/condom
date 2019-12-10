@@ -17,8 +17,8 @@
 
 package com.oasisfeng.condom.util;
 
-import android.support.annotation.Keep;
-import android.support.annotation.RestrictTo;
+import androidx.annotation.Keep;
+import androidx.annotation.RestrictTo;
 
 /**
  * Helper class for lazy initialization.

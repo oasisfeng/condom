@@ -43,10 +43,11 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.UserHandle;
-import android.support.annotation.Keep;
-import android.support.annotation.RequiresApi;
-import android.support.annotation.RestrictTo;
 import android.view.Display;
+import androidx.annotation.Keep;
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+import androidx.annotation.RestrictTo;
 
 import java.io.File;
 import java.io.FileInputStream;

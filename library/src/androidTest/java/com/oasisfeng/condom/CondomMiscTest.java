@@ -30,7 +30,8 @@ import android.os.IBinder;
 import android.os.Process;
 import android.os.UserHandle;
 import android.provider.Settings;
-import android.support.test.InstrumentationRegistry;
+
+import androidx.test.core.app.ApplicationProvider;
 import android.util.DisplayMetrics;
 import android.util.EventLog;
 
@@ -129,7 +130,7 @@ public class CondomMiscTest {
 			assertEquals(expected_intent, data[3]);
 		}
 
-		final CondomContext condom_wo_tag = CondomContext.wrap(new ContextWrapper(InstrumentationRegistry.getTargetContext()) {
+		final CondomContext condom_wo_tag = CondomContext.wrap(new ContextWrapper(ApplicationProvider.getApplicationContext()) {
 			@Override public boolean bindService(final Intent service, final ServiceConnection conn, final int flags) { return true; }
 			@Override public ComponentName startService(final Intent service) {
 				return service.getComponent() != null ? service.getComponent() : new ComponentName(service.getPackage(), "A");
@@ -185,7 +186,7 @@ public class CondomMiscTest {
 	};
 
 
-	private final CondomContext condom = CondomContext.wrap(new ContextWrapper(InstrumentationRegistry.getTargetContext()) {
+	private final CondomContext condom = CondomContext.wrap(new ContextWrapper(ApplicationProvider.getApplicationContext()) {
 		@Override public boolean bindService(final Intent service, final ServiceConnection conn, final int flags) { return true; }
 		@Override public ComponentName startService(final Intent service) {
 			return service.getComponent() != null ? service.getComponent() : new ComponentName(service.getPackage(), "A");
