@@ -54,6 +54,7 @@ import static android.content.pm.PackageManager.GET_SERVICES;
 import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR1;
 import static android.os.Build.VERSION_CODES.N_MR1;
+import static android.os.Build.VERSION_CODES.Q;
 
 /**
  * Process-level condom
@@ -273,8 +274,8 @@ public class CondomProcess {
 				}});
 				if (component != null) mCondom.logIfOutboundPass(FULL_TAG, intent, component.getPackageName(), CondomCore.CondomEvent.START_PASS);
 				return component;
-			case "getContentProvider":
-				final String name = (String) args[1];
+			case "getContentProvider":		// (ApplicationThread, [Q+ String opPackageName], String authority, int userId, boolean stable)
+				final String name = (String) args[SDK_INT >= Q ? 2 : 1];
 				if (! mCondom.shouldAllowProvider(mCondom.mBase, name, PackageManager.MATCH_ALL))	// MATCH_ALL as special hint to ask the hooked IPackageManager.resolveContentProvider() to bypass.
 					return null;	// Actually blocked by IPackageManager.resolveContentProvider() which is called in shouldAllowProvider() above.
 				break;
