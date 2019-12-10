@@ -5,9 +5,9 @@ android:
     - tools
     - platform-tools
     - tools # intentional, see travis-ci/docs-travis-ci-com#779
-    - build-tools-28.0.3
+    - build-tools-29.0.2
     - android-22 # For emulator to work
-    - android-28
+    - android-29
     - extra-android-m2repository
     - sys-img-armeabi-v7a-android-15
     - sys-img-armeabi-v7a-android-22
@@ -17,6 +17,7 @@ env:
   matrix:
     - ANDROID_SDKS=android-22,sysimg-22  ANDROID_TARGET=android-22  ANDROID_ABI=armeabi-v7a
 before_install:
+  - yes | sdkmanager "platforms;android-28"
   - echo no | android create avd --force -n test -t $ANDROID_TARGET --abi $ANDROID_ABI
   - emulator -avd test -no-skin -no-audio -no-window &
 before_script:
