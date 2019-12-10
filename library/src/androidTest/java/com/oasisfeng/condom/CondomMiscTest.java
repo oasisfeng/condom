@@ -31,6 +31,7 @@ import android.os.Process;
 import android.os.UserHandle;
 import android.provider.Settings;
 
+import androidx.annotation.NonNull;
 import androidx.test.core.app.ApplicationProvider;
 import android.util.DisplayMetrics;
 import android.util.EventLog;
@@ -46,6 +47,7 @@ import java.util.List;
 import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.LOLLIPOP;
 import static android.os.Build.VERSION_CODES.O;
+import static java.util.Objects.requireNonNull;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertTrue;
 
@@ -56,7 +58,8 @@ import static junit.framework.Assert.assertTrue;
  */
 public class CondomMiscTest {
 
-	@Test public void testHiddenApi() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+	@SuppressWarnings("JavaReflectionMemberAccess")
+    @Test public void testHiddenApi() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
 		final Object uid = PackageManager.class.getMethod("getUidForSharedUser", String.class).invoke(condom.getPackageManager(),"android.uid.system");
 		assertEquals(1000, (int) uid);
 		// This hidden API is used by some 3rd-party libraries, as reported in issue #9 on GitHub.
@@ -122,7 +125,7 @@ public class CondomMiscTest {
 			assertEquals(expected_intent, data[3]);
 
 			final ResolveInfo resolve = condom.getPackageManager().resolveService(intent, 0);
-			assertEquals("non.bg.service", resolve.serviceInfo.applicationInfo.packageName);
+            assertEquals("non.bg.service", requireNonNull(resolve).serviceInfo.applicationInfo.packageName);
 			data = readLastEvent(CondomCore.CondomEvent.FILTER_BG_SERVICE);
 			assertEquals(condom.getPackageName(), data[0]);
 			assertEquals("Condom." + TAG, data[1]);
@@ -133,7 +136,8 @@ public class CondomMiscTest {
 		final CondomContext condom_wo_tag = CondomContext.wrap(new ContextWrapper(ApplicationProvider.getApplicationContext()) {
 			@Override public boolean bindService(final Intent service, final ServiceConnection conn, final int flags) { return true; }
 			@Override public ComponentName startService(final Intent service) {
-				return service.getComponent() != null ? service.getComponent() : new ComponentName(service.getPackage(), "A");
+				return service.getComponent() != null ? service.getComponent()
+                        : new ComponentName(requireNonNull(service.getPackage()), "A");
 			}
 		}, null);
 
@@ -143,7 +147,7 @@ public class CondomMiscTest {
 		data = readLastEvent(CondomCore.CondomEvent.BIND_PASS);
 		assertEquals(condom_wo_tag.getPackageName(), data[0]);
 		assertEquals("Condom", data[1]);
-		assertEquals(intent.getComponent().getPackageName(), data[2]);
+		assertEquals(requireNonNull(intent.getComponent()).getPackageName(), data[2]);
 		assertEquals(intent.toString(), data[3]);
 
 		condom_wo_tag.startService(intent);
@@ -189,16 +193,17 @@ public class CondomMiscTest {
 	private final CondomContext condom = CondomContext.wrap(new ContextWrapper(ApplicationProvider.getApplicationContext()) {
 		@Override public boolean bindService(final Intent service, final ServiceConnection conn, final int flags) { return true; }
 		@Override public ComponentName startService(final Intent service) {
-			return service.getComponent() != null ? service.getComponent() : new ComponentName(service.getPackage(), "A");
+			return service.getComponent() != null ? service.getComponent()
+                    : new ComponentName(requireNonNull(service.getPackage()), "A");
 		}
 
 		@Override public PackageManager getPackageManager() {
 			return new PackageManagerWrapper(super.getPackageManager()) {
-				@Override public List<ResolveInfo> queryIntentServices(final Intent intent, final int flags) {
+				@Override public @NonNull List<ResolveInfo> queryIntentServices(final Intent intent, final int flags) {
 					final List<ResolveInfo> resolves = new ArrayList<>();
 					final String ime = Settings.Secure.getString(getContentResolver(), Settings.Secure.DEFAULT_INPUT_METHOD);
 					if (ime != null) try {
-						final String ime_pkg = ComponentName.unflattenFromString(ime).getPackageName();
+						final String ime_pkg = requireNonNull(ComponentName.unflattenFromString(ime)).getPackageName();
 						final int uid = getPackageManager().getPackageUid(ime_pkg, 0);
 						resolves.add(buildResolveInfo("bg.service.1", 999999999));		// Simulate a background UID.
 						resolves.add(buildResolveInfo("non.bg.service", uid));

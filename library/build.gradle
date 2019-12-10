@@ -51,7 +51,7 @@ dependencies {
 android.libraryVariants.all { variant ->
     String taskName = String.format("remove%sStubClasses", variant.name.capitalize())
     task "${taskName}" {
-        doLast { delete "${buildDir}/intermediates/javac/${variant.name}/compile${variant.name}JavaWithJavac/classes/android" }
+        doLast { delete "${buildDir}/intermediates/javac/${variant.name}/classes/android" }
     }
     variant.processJavaResources.dependsOn(taskName)
 }

@@ -13,6 +13,7 @@ import androidx.annotation.Nullable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * A simple service to mimic the real-world service to be wrapped by {@link com.oasisfeng.condom.CondomProcess CondomProcess}.
@@ -43,7 +44,7 @@ public class TestService extends Service {
 				throw new RuntimeException(e);
 			}
 			// Enclosing class is always carried by anonymous inner class, but useless here.
-			final Class<?> type = value.getClass();
+			final Class<?> type = Objects.requireNonNull(value).getClass();
 			if (type == enclosing_class || type == Context.class || type == Application.class) data.writeValue(null);
 			else try {
 				data.writeValue(value);
@@ -68,9 +69,9 @@ public class TestService extends Service {
 
 	@Override public @Nullable IBinder onBind(final Intent intent) {
 		return new Binder() {
-			@Override protected boolean onTransact(final int code, final Parcel data, final Parcel reply, final int flags) throws RemoteException {
+			@Override protected boolean onTransact(final int code, final Parcel data, final @Nullable Parcel reply, final int flags) {
 				try {
-					final Class<?> clazz = Class.forName(data.readString());
+					final Class<?> clazz = Class.forName(Objects.requireNonNull(data.readString()));
 					final Constructor<?> constructor = clazz.getDeclaredConstructors()[0];
 					constructor.setAccessible(true);
 					final Class<?>[] parameter_types = constructor.getParameterTypes();
@@ -82,10 +83,10 @@ public class TestService extends Service {
 					}
 					final Procedure procedure = (Procedure) constructor.newInstance(args);
 					procedure.run(TestService.this);
-					reply.writeValue(null);
-				} catch (final Throwable t) {
-					reply.writeValue(t);
-				}
+                    if (reply != null) reply.writeValue(null);
+                } catch (final Throwable t) {
+                    if (reply != null) reply.writeValue(t);
+                }
 				return true;
 			}
 		};
