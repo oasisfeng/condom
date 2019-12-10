@@ -40,11 +40,14 @@ import android.util.Log;
 
 import com.oasisfeng.condom.util.Lazy;
 
+import java.util.concurrent.Executor;
+
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR1;
 import static android.os.Build.VERSION_CODES.M;
 import static android.os.Build.VERSION_CODES.O;
+import static android.os.Build.VERSION_CODES.Q;
 
 /**
  * The condom-style {@link ContextWrapper} to prevent unwanted behaviors going through.
@@ -102,9 +105,19 @@ public class CondomContext extends ContextWrapper {
 	/* ****** Hooked Context APIs ****** */
 
 	@Override public boolean bindService(final Intent intent, final ServiceConnection conn, final int flags) {
-		final boolean result = mCondom.proceed(OutboundType.BIND_SERVICE, intent, Boolean.FALSE, new CondomCore.WrappedValueProcedure<Boolean>() { @Override public Boolean proceed() {
-			return CondomContext.super.bindService(intent, conn, flags);
-		}});
+		return doBindService(intent, () -> CondomContext.super.bindService(intent, conn, flags));
+	}
+
+	@RequiresApi(Q) @Override public boolean bindService(final Intent intent, final int flags, final Executor executor, final ServiceConnection conn) {
+		return doBindService(intent, () -> CondomContext.super.bindService(intent, flags, executor, conn));
+	}
+
+	@RequiresApi(Q) @Override public boolean bindIsolatedService(final Intent intent, final int flags, final String instanceName, final Executor executor, final ServiceConnection conn) {
+		return doBindService(intent, () -> CondomContext.super.bindIsolatedService(intent, flags, instanceName, executor, conn));
+	}
+
+	private boolean doBindService(final Intent intent, final CondomCore.WrappedValueProcedure<Boolean> procedure) {
+		final boolean result = mCondom.proceed(OutboundType.BIND_SERVICE, intent, Boolean.FALSE, procedure);
 		if (result) mCondom.logIfOutboundPass(TAG, intent, CondomCore.getTargetPackage(intent), CondomCore.CondomEvent.BIND_PASS);
 		return result;
 	}

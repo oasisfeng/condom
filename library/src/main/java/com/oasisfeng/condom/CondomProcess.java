@@ -260,7 +260,8 @@ public class CondomProcess {
 						? new Object[] { args[1], args[4], args[5], args[6], args[args.length - 3], args[args.length - 2], args[args.length - 1] }
 						: new Object[] { args[1], args[4], args[5], args[6], args[8], args[9] });
 				return 0/* ActivityManager.BROADCAST_SUCCESS */;
-			case "bindService":
+			case "bindService":				// Android P-
+			case "bindIsolatedService":		// Android Q+
 				intent = (Intent) args[2];
 				result = mCondom.proceed(OutboundType.BIND_SERVICE, intent, 0, new CondomCore.WrappedValueProcedureThrows<Integer, Throwable>() { @Override public Integer proceed() throws Throwable {
 					return (Integer) CondomProcessActivityManager.super.invoke(proxy, method, args);
