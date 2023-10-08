@@ -1,22 +1,21 @@
-apply plugin: 'com.android.library'
+plugins {
+    id 'com.android.library'
+    id 'maven-publish'
+}
 
 android {
-    compileSdkVersion 29
-    buildToolsVersion "28.0.3"
-
+    namespace 'com.oasisfeng.condom'
+    compileSdk 34
     defaultConfig {
-        minSdkVersion 14
-        targetSdkVersion 29
-        versionCode 1
-        versionName "1.0"
+        minSdk 14
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
-
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+    buildFeatures { buildConfig = true }
 
     lintOptions {
         // Disable 'NewApi' checking due to false errors in old version of lint tool, until sdk-tool-25.4 is deployed on Travis-CI.
@@ -36,19 +35,15 @@ android {
             consumerProguardFiles 'proguard-rules.pro'
         }
     }
+
+    publishing {
+        singleVariant('release') {
+            withSourcesJar()
+        }
+    }
 }
 
-dependencies {
-    implementation 'com.google.code.findbugs:jsr305:3.0.2'
-    implementation 'androidx.annotation:annotation:1.1.0'
-
-    androidTestImplementation 'androidx.test:runner:1.2.0'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
-
-    testImplementation 'junit:junit:4.12'
-}
-
-android.libraryVariants.all { variant ->
+android.libraryVariants.configureEach { variant ->
     String taskName = String.format("remove%sStubClasses", variant.name.capitalize())
     task "${taskName}" {
         doLast { delete "${buildDir}/intermediates/javac/${variant.name}/classes/android" }
@@ -56,30 +51,30 @@ android.libraryVariants.all { variant ->
     variant.processJavaResources.dependsOn(taskName)
 }
 
-task sourcesJar(type: Jar) {
-    from android.sourceSets.main.java.srcDirs
-    classifier = 'sources'
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = 'com.oasisfeng.condom'
+            artifactId = 'library'
+            version = '2.5.0'
+
+            afterEvaluate {
+                from components.release
+            }
+        }
+    }
+    repositories {
+        mavenLocal()
+    }
 }
 
-task javadoc(type: Javadoc) {
-    options.encoding = 'UTF-8'
-    options.charSet = 'UTF-8'
-    failOnError false
-    source = android.sourceSets.main.java.srcDirs
-    classpath += project.files(android.getBootClasspath().join(File.pathSeparator)) + configurations.compile
+dependencies {
+    compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
 
-    exclude "com/oasisfeng/condom/util/**.java"
-    exclude "android/**.java"
+    implementation 'androidx.annotation:annotation:1.7.0'
+
+    androidTestImplementation 'androidx.test:runner:1.5.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+
+    testImplementation 'junit:junit:4.13.2'
 }
-
-task javadocJar(type: Jar, dependsOn: 'javadoc') {
-    from javadoc
-    classifier = 'javadoc'
-}
-
-artifacts {
-    archives sourcesJar
-    archives javadocJar
-}
-
-if (file('deploy.gradle').exists()) apply from: 'deploy.gradle'

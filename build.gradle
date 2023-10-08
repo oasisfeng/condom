@@ -3,22 +3,16 @@
 buildscript {
     repositories {
         google()
-        jcenter()
+        mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.5.3'
-
-        // NOTE: Do not place your application dependencies here; they belong
-        // in the individual module build.gradle files
+        classpath 'com.android.tools.build:gradle:8.1.2'
     }
-    if (file('local.buildscript.gradle').exists()) apply from: 'local.buildscript.gradle', to: buildscript
 }
-
-if (file('local.gradle').exists()) apply from: 'local.gradle'
 
 allprojects {
     repositories {
         google()
-        jcenter()
+        mavenCentral()
     }
 }
