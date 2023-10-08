@@ -58,7 +58,7 @@ import static android.os.Build.VERSION_CODES.Q;
 
 /**
  * Process-level condom
- *
+ * <p>
  * Created by Oasis on 2017/4/17.
  */
 @Keep
@@ -306,12 +306,12 @@ public class CondomProcess {
 			case "queryIntentReceivers":
 				if (outbound_type == null) outbound_type = OutboundType.QUERY_RECEIVERS;
 
-				final Object result = super.invoke(proxy, method, args);
+				final Object receivers = super.invoke(proxy, method, args);
 
-				final List<ResolveInfo> list = mCondom.proceedQuery(outbound_type, (Intent) args[0], () -> asList(result),
+				final List<ResolveInfo> list = mCondom.proceedQuery(outbound_type, (Intent) args[0], () -> asList(receivers),
 						outbound_type == OutboundType.QUERY_SERVICES ? CondomCore.SERVICE_PACKAGE_GETTER : CondomCore.RECEIVER_PACKAGE_GETTER);	// Both "queryIntentServices" and "queryIntentReceivers" reach here.
-				if (list.isEmpty()) asList(result).clear();	// In case Collections.emptyList() is returned due to targeted query being rejected by outbound judge.
-				return result;
+				if (list.isEmpty()) asList(receivers).clear();	// In case Collections.emptyList() is returned due to targeted query being rejected by outbound judge.
+				return receivers;
 
 			case "resolveService":
 				// Intent flags could only filter background receivers, we have to deal with services by ourselves.
@@ -335,10 +335,20 @@ public class CondomProcess {
 				final int flags = (int) args[1];
 				if ((flags & PackageManager.MATCH_ALL) != 0) return provider;	// MATCH_ALL will be used by the hooked IActivityManager.getContentProvider().
 				return mCondom.shouldAllowProvider(provider) ? provider : null;
+
 			case "getInstalledApplications":
 			case "getInstalledPackages":
 				mCondom.logConcern(FULL_TAG, "IPackageManager." + method_name);
 				break;
+			case "getPackageInfo":
+				return mCondom.proceed(OutboundType.GET_PACKAGE_INFO, (String) args[0], null, () ->
+						(PackageInfo) CondomProcessPackageManager.super.invoke(proxy, method, args));
+			case "getPackageUid":
+				final String pkg = (String) args[0];
+				final Integer result = mCondom.proceed(OutboundType.GET_PACKAGE_INFO, pkg, null, () ->
+						(Integer) com.oasisfeng.condom.CondomProcess.CondomProcessPackageManager.super.invoke(proxy, method, args));
+				if (result == null) throw new PackageManager.NameNotFoundException(pkg);    // TODO: Add test case
+				return result;
 			}
 			return super.invoke(proxy, method, args);
 		}
@@ -373,7 +383,7 @@ public class CondomProcess {
 	private static class CondomSystemService implements InvocationHandler {
 
 		@Override public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
-			if (DEBUG) Log.d(TAG, mServiceTag + method.getName() + (args == null ? "" : Arrays.deepToString(args)));
+			if (DEBUG) Log.d(TAG, mServiceTag + method.getName() + Arrays.deepToString(args));
 			try {
 				return method.invoke(mService, args);
 			} catch (final InvocationTargetException e) {

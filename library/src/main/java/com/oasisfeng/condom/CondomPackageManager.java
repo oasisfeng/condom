@@ -43,7 +43,7 @@ import static android.os.Build.VERSION_CODES.LOLLIPOP;
  */
 class CondomPackageManager extends PackageManagerWrapper {
 
-	@Override public List<ResolveInfo> queryBroadcastReceivers(final Intent intent, final int flags) {
+	@Override public @NonNull List<ResolveInfo> queryBroadcastReceivers(final Intent intent, final int flags) {
 		return mCondom.proceedQuery(OutboundType.QUERY_RECEIVERS, intent, new CondomCore.WrappedValueProcedure<List<ResolveInfo>>() {
 			@Override public List<ResolveInfo> proceed() {
 				return CondomPackageManager.super.queryBroadcastReceivers(intent, flags);
@@ -51,7 +51,7 @@ class CondomPackageManager extends PackageManagerWrapper {
 		}, CondomCore.RECEIVER_PACKAGE_GETTER);
 	}
 
-	@Override public List<ResolveInfo> queryIntentServices(final Intent intent, final int flags) {
+	@Override public @NonNull List<ResolveInfo> queryIntentServices(final Intent intent, final int flags) {
 		final int original_intent_flags = intent.getFlags();
 		return mCondom.proceedQuery(OutboundType.QUERY_SERVICES, intent, new CondomCore.WrappedValueProcedure<List<ResolveInfo>>() {
 			@Override public List<ResolveInfo> proceed() {
@@ -83,17 +83,17 @@ class CondomPackageManager extends PackageManagerWrapper {
 		return provider;
 	}
 
-	@Override public List<PackageInfo> getInstalledPackages(final int flags) {
+	@Override public @NonNull List<PackageInfo> getInstalledPackages(final int flags) {
 		mCondom.logConcern(TAG, "PackageManager.getInstalledPackages");
 		return super.getInstalledPackages(flags);
 	}
 
-	@Override public List<ApplicationInfo> getInstalledApplications(final int flags) {
+	@Override public @NonNull List<ApplicationInfo> getInstalledApplications(final int flags) {
 		mCondom.logConcern(TAG, "PackageManager.getInstalledApplications");
 		return super.getInstalledApplications(flags);
 	}
 
-	@Override public ApplicationInfo getApplicationInfo(final String pkg, final int flags) throws NameNotFoundException {
+	@Override public @NonNull ApplicationInfo getApplicationInfo(final String pkg, final int flags) throws NameNotFoundException {
 		return mCondom.proceed(OutboundType.GET_APPLICATION_INFO, pkg, null, new CondomCore.WrappedValueProcedureThrows<ApplicationInfo, NameNotFoundException>() {
 			@Override public ApplicationInfo proceed() throws NameNotFoundException {
 				return CondomPackageManager.super.getApplicationInfo(pkg, flags);
