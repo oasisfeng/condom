@@ -1,12 +1,14 @@
 plugins {
     id 'com.android.library'
     id 'maven-publish'
+    id 'signing'
 }
 
 android {
     namespace 'com.oasisfeng.condom'
     compileSdk 34
     defaultConfig {
+        versionName '3.0.0'
         minSdk 14
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -51,23 +53,6 @@ android.libraryVariants.configureEach { variant ->
     variant.processJavaResources.dependsOn(taskName)
 }
 
-publishing {
-    publications {
-        maven(MavenPublication) {
-            groupId = 'com.oasisfeng.condom'
-            artifactId = 'library'
-            version = '2.5.0'
-
-            afterEvaluate {
-                from components.release
-            }
-        }
-    }
-    repositories {
-        mavenLocal()
-    }
-}
-
 dependencies {
     compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
     compileOnly 'androidx.annotation:annotation:1.7.0'
@@ -76,4 +61,57 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
 
     testImplementation 'junit:junit:4.13.2'
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = 'com.oasisfeng.condom'
+            artifactId = 'library'
+            version = android.defaultConfig.versionName
+
+            afterEvaluate {
+                from components.release
+            }
+
+            pom {
+                name = 'Project Condom'
+                description = 'A thin library to wrap the naked Context in your Android project before passing it to the 3rd-party SDK. It is designed to prevent the 3rd-party SDK from common unwanted behaviors which may harm the user experience of your app.'
+                url = 'https://github.com/oasisfeng/condom'
+                licenses {
+                    license {
+                        name = 'The Apache License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'oasisfeng'
+                        name = 'Oasis Feng'
+                        email = 'oss@oasisfeng.com'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:git://github.com/oasisfeng/condom.git'
+                    developerConnection = 'scm:git:ssh://github.com/oasisfeng/condom.git'
+                    url = 'https://github.com/oasisfeng/condom'
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            url = android.defaultConfig.versionName.endsWith("-SNAPSHOT") ? "https://oss.sonatype.org/content/repositories/snapshots/"
+                    : "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+            credentials {
+                username = ossrhUsername
+                password = ossrhPassword
+            }
+        }
+        mavenLocal()
+    }
+}
+
+signing {
+    sign publishing.publications.maven
 }
